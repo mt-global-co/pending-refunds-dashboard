@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pending Refunds Dashboard</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Pending Refunds Dashboard</h1>
+    <div class="topbar-actions">
+      <span id="lastUpdated" class="last-updated">Loading…</span>
+      <button id="refreshBtn" class="btn">Refresh</button>
+    </div>
+  </header>
+
+  <section class="summary" id="summary">
+    <div class="summary-card total">
+      <span class="summary-count" id="countTotal">0</span>
+      <span class="summary-label">Total Pending</span>
+    </div>
+    <div class="summary-card ok">
+      <span class="summary-count" id="countOk">0</span>
+      <span class="summary-label">On Time</span>
+    </div>
+    <div class="summary-card yellow">
+      <span class="summary-count" id="countYellow">0</span>
+      <span class="summary-label">5+ Days Overdue</span>
+    </div>
+    <div class="summary-card orange">
+      <span class="summary-count" id="countOrange">0</span>
+      <span class="summary-label">7+ Days Overdue</span>
+    </div>
+    <div class="summary-card red">
+      <span class="summary-count" id="countRed">0</span>
+      <span class="summary-label">10+ Days Overdue</span>
+    </div>
+  </section>
+
+  <section class="controls">
+    <input type="text" id="searchInput" placeholder="Search by VA or Order Number…" />
+    <select id="vaFilter">
+      <option value="">All VAs</option>
+    </select>
+    <select id="statusFilter">
+      <option value="">All Statuses</option>
+      <option value="ok">On Time</option>
+      <option value="yellow">5+ Days Overdue</option>
+      <option value="orange">7+ Days Overdue</option>
+      <option value="red">10+ Days Overdue</option>
+    </select>
+  </section>
+
+  <main>
+    <div id="errorBox" class="error-box" hidden></div>
+    <table id="refundsTable">
+      <thead>
+        <tr>
+          <th data-sort="va">VA</th>
+          <th data-sort="order">Order Number</th>
+          <th data-sort="promised">Promised Date</th>
+          <th data-sort="days">Days Overdue</th>
+          <th data-sort="status">Status</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="5" class="loading-row">Loading refund data…</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <footer>
+    <p>Data pulled live from Google Sheets. Auto-refreshes every 60 seconds.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
