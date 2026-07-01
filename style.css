@@ -157,16 +157,37 @@ main {
 }
 
 .table-wrap {
-  overflow-x: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 56px);
   border-radius: 10px;
   border: 1px solid var(--border);
+  scrollbar-color: var(--border) var(--card-bg);
+  scrollbar-width: thin;
+}
+
+.table-wrap::-webkit-scrollbar {
+  width: 10px;
+}
+
+.table-wrap::-webkit-scrollbar-track {
+  background: var(--card-bg);
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 table {
   width: 100%;
-  min-width: 720px;
   border-collapse: collapse;
   background: var(--card-bg);
+  table-layout: fixed;
 }
 
 th, td {
@@ -174,10 +195,14 @@ th, td {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: #1e212b;
   cursor: pointer;
   user-select: none;
