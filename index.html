@@ -36,6 +36,10 @@
           <span class="summary-count" id="countRed">0</span>
           <span class="summary-label">10+ Days Overdue</span>
         </div>
+        <div class="summary-card refunded total">
+          <span class="summary-count" id="countRefunded">0</span>
+          <span class="summary-label">Refunded</span>
+        </div>
       </div>
 
       <div class="controls">
@@ -44,11 +48,9 @@
           <option value="">All VAs</option>
         </select>
         <select id="statusFilter">
-          <option value="">All Statuses</option>
-          <option value="ok">On Time</option>
-          <option value="yellow">5+ Days Overdue</option>
-          <option value="orange">7+ Days Overdue</option>
-          <option value="red">10+ Days Overdue</option>
+          <option value="">All Progress</option>
+          <option value="pending">Pending</option>
+          <option value="refunded">Refunded</option>
         </select>
       </div>
 
@@ -65,7 +67,7 @@
               <th data-sort="order">Order Number</th>
               <th data-sort="promised">Promised Date</th>
               <th data-sort="days">Days Overdue</th>
-              <th data-sort="status">Status</th>
+              <th data-sort="status">Progress</th>
             </tr>
           </thead>
           <tbody id="tableBody">

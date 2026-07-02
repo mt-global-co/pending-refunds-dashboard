@@ -71,18 +71,16 @@ function daysBetween(from, to) {
   return Math.round((b - a) / msPerDay);
 }
 
-function statusFor(daysOverdue) {
+function urgencyFor(daysOverdue) {
   if (daysOverdue >= 10) return "red";
   if (daysOverdue >= 7) return "orange";
   if (daysOverdue >= 5) return "yellow";
   return "ok";
 }
 
-const STATUS_LABEL = {
-  ok: "On Time",
-  yellow: "5+ Days Overdue",
-  orange: "7+ Days Overdue",
-  red: "10+ Days Overdue",
+const PROGRESS_LABEL = {
+  pending: "Pending",
+  refunded: "Refunded",
 };
 
 function rowsFromCSV(csvRows) {
@@ -91,6 +89,7 @@ function rowsFromCSV(csvRows) {
     va: header.findIndex((h) => h.trim().toLowerCase() === "va"),
     order: header.findIndex((h) => h.trim().toLowerCase() === "order number"),
     promised: header.findIndex((h) => h.trim().toLowerCase() === "promised date"),
+    progress: header.findIndex((h) => h.trim().toLowerCase() === "status"),
   };
 
   const today = new Date();
@@ -101,10 +100,13 @@ function rowsFromCSV(csvRows) {
       const order = (r[idx.order] || "").trim();
       const promisedRaw = (r[idx.promised] || "").trim();
       const promisedDate = parseDate(promisedRaw);
-      if (!va && !order) return null;
+      if (!order) return null;
+
+      const progressRaw = (r[idx.progress] || "").trim().toLowerCase();
+      const progress = progressRaw === "refunded" ? "refunded" : "pending";
 
       const daysOverdue = promisedDate ? daysBetween(promisedDate, today) : null;
-      const status = daysOverdue === null ? "ok" : statusFor(daysOverdue);
+      const urgency = daysOverdue === null ? "ok" : urgencyFor(daysOverdue);
 
       return {
         va,
@@ -112,7 +114,8 @@ function rowsFromCSV(csvRows) {
         promisedRaw,
         promisedDate,
         daysOverdue,
-        status,
+        urgency,
+        progress,
       };
     })
     .filter(Boolean);
@@ -152,7 +155,7 @@ function updateVAOptions() {
 function applyFiltersAndSort(rows) {
   let out = rows.filter((r) => {
     if (state.vaFilter && r.va !== state.vaFilter) return false;
-    if (state.statusFilter && r.status !== state.statusFilter) return false;
+    if (state.statusFilter && r.progress !== state.statusFilter) return false;
     if (state.search) {
       const s = state.search.toLowerCase();
       if (!r.va.toLowerCase().includes(s) && !r.order.toLowerCase().includes(s)) {
@@ -179,8 +182,8 @@ function applyFiltersAndSort(rows) {
         bv = b.promisedDate ? b.promisedDate.getTime() : -Infinity;
         break;
       case "status":
-        av = a.status;
-        bv = b.status;
+        av = a.progress;
+        bv = b.progress;
         break;
       case "days":
       default:
@@ -209,26 +212,32 @@ function render() {
         const promisedLabel = r.promisedDate
           ? r.promisedDate.toLocaleDateString()
           : r.promisedRaw || "—";
+        const rowClass = r.progress === "refunded" ? "row-refunded" : `row-${r.urgency}`;
+        const pillClass = r.progress === "refunded" ? "refunded" : r.urgency;
         return `
-          <tr class="row-${r.status}">
+          <tr class="${rowClass}">
             <td>${escapeHTML(r.va)}</td>
             <td>${escapeHTML(r.order)}</td>
             <td>${escapeHTML(promisedLabel)}</td>
             <td>${daysLabel}</td>
-            <td><span class="status-pill">${STATUS_LABEL[r.status]}</span></td>
+            <td><span class="status-pill ${pillClass}">${PROGRESS_LABEL[r.progress]}</span></td>
           </tr>
         `;
       })
       .join("");
   }
 
-  const counts = { ok: 0, yellow: 0, orange: 0, red: 0 };
-  state.rows.forEach((r) => counts[r.status]++);
-  document.getElementById("countTotal").textContent = state.rows.length;
+  const counts = { pending: 0, refunded: 0, ok: 0, yellow: 0, orange: 0, red: 0 };
+  state.rows.forEach((r) => {
+    counts[r.progress]++;
+    if (r.progress === "pending") counts[r.urgency]++;
+  });
+  document.getElementById("countTotal").textContent = counts.pending;
   document.getElementById("countOk").textContent = counts.ok;
   document.getElementById("countYellow").textContent = counts.yellow;
   document.getElementById("countOrange").textContent = counts.orange;
   document.getElementById("countRed").textContent = counts.red;
+  document.getElementById("countRefunded").textContent = counts.refunded;
 }
 
 function escapeHTML(str) {

@@ -14,6 +14,8 @@
   --orange-bg: rgba(255, 145, 66, 0.14);
   --red: #ff5c5c;
   --red-bg: rgba(255, 92, 92, 0.14);
+  --refunded: #8b9bb4;
+  --refunded-bg: rgba(139, 155, 180, 0.12);
   --accent: #4f8cff;
 }
 
@@ -114,6 +116,7 @@ body {
 .summary-card.yellow .summary-count { color: var(--yellow); }
 .summary-card.orange .summary-count { color: var(--orange); }
 .summary-card.red .summary-count { color: var(--red); }
+.summary-card.refunded .summary-count { color: var(--refunded); }
 
 .controls {
   display: flex;
@@ -240,16 +243,18 @@ tbody tr:hover {
   font-weight: 600;
 }
 
-tr.row-ok .status-pill { background: var(--ok-bg); color: var(--ok); }
-tr.row-yellow .status-pill { background: var(--yellow-bg); color: var(--yellow); }
-tr.row-orange .status-pill { background: var(--orange-bg); color: var(--orange); }
-tr.row-red .status-pill { background: var(--red-bg); color: var(--red); }
+.status-pill.ok { background: var(--ok-bg); color: var(--ok); }
+.status-pill.yellow { background: var(--yellow-bg); color: var(--yellow); }
+.status-pill.orange { background: var(--orange-bg); color: var(--orange); }
+.status-pill.red { background: var(--red-bg); color: var(--red); }
+.status-pill.refunded { background: var(--refunded-bg); color: var(--refunded); }
 
 tr.row-yellow { background: var(--yellow-bg); }
 tr.row-orange { background: var(--orange-bg); }
 tr.row-red { background: var(--red-bg); }
+tr.row-refunded { background: var(--refunded-bg); }
 
-tr.row-yellow:hover, tr.row-orange:hover, tr.row-red:hover {
+tr.row-yellow:hover, tr.row-orange:hover, tr.row-red:hover, tr.row-refunded:hover {
   filter: brightness(1.15);
 }
 
