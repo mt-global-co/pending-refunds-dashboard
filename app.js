@@ -3,7 +3,7 @@ const SHEET_ID = "19WihBvQ8fUmkj9ioqvZMapAZAVFMij_6_Ca4rCWYh6k";
 const GID = "0";
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
 
-const REFRESH_INTERVAL_MS = 60 * 1000;
+const REFRESH_INTERVAL_MS = 30 * 1000;
 
 const state = {
   rows: [],
@@ -145,8 +145,11 @@ function rowsFromCSV(csvRows) {
     .filter(Boolean);
 }
 
+let lastFetchAt = 0;
+
 async function fetchData() {
   const errorBox = document.getElementById("errorBox");
+  lastFetchAt = Date.now();
   try {
     const res = await fetch(`${SHEET_URL}&_=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) throw new Error(`Sheet request failed (${res.status})`);
@@ -307,6 +310,16 @@ function initControls() {
   });
 }
 
+// Browsers throttle timers in background tabs, so the interval alone can
+// fall behind; refetch immediately when the tab comes back into view.
+function refreshIfStale() {
+  if (document.visibilityState === "visible" && Date.now() - lastFetchAt > 5000) {
+    fetchData();
+  }
+}
+
 initControls();
 fetchData();
 setInterval(fetchData, REFRESH_INTERVAL_MS);
+document.addEventListener("visibilitychange", refreshIfStale);
+window.addEventListener("focus", refreshIfStale);

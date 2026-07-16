@@ -14,7 +14,8 @@ flags overdue refunds by color:
 - The page fetches the sheet's CSV export (`.../gviz/tq?tqx=out:csv`) directly
   in the browser, so data is always live — no backend, no build step.
 - "Days overdue" = today's date minus the **Promised Date** column.
-- Data auto-refreshes every 60 seconds, or click **Refresh**.
+- Data auto-refreshes every 30 seconds, refetches when the tab regains
+  focus, or click **Refresh**.
 
 ## Requirements
 
