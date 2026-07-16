@@ -81,15 +81,32 @@ function urgencyFor(daysOverdue) {
 const PROGRESS_LABEL = {
   pending: "Pending",
   refunded: "Refunded",
+  chargeback: "Chargeback",
+  ethoca: "Ethoca Alert",
 };
+
+// Statuses that close a case: the overdue counter freezes at the Status Date.
+const CLOSED_STATUSES = new Set(["refunded", "chargeback", "ethoca"]);
+
+function progressFromRaw(raw) {
+  const s = raw.trim().toLowerCase();
+  if (s === "refunded") return "refunded";
+  if (s === "chargeback") return "chargeback";
+  if (s.includes("ethoca")) return "ethoca";
+  return "pending";
+}
 
 function rowsFromCSV(csvRows) {
   const [header, ...body] = csvRows;
+  const headerKey = (h) => h.trim().toLowerCase();
   const idx = {
-    va: header.findIndex((h) => h.trim().toLowerCase() === "va"),
-    order: header.findIndex((h) => h.trim().toLowerCase() === "order number"),
-    promised: header.findIndex((h) => h.trim().toLowerCase() === "promised date"),
-    progress: header.findIndex((h) => h.trim().toLowerCase() === "status"),
+    va: header.findIndex((h) => headerKey(h) === "va"),
+    order: header.findIndex((h) => headerKey(h) === "order number"),
+    promised: header.findIndex((h) => headerKey(h) === "promised date"),
+    progress: header.findIndex((h) => headerKey(h) === "status"),
+    statusDate: header.findIndex((h) =>
+      ["status date", "date updated", "updated", "closed date"].includes(headerKey(h))
+    ),
   };
 
   const today = new Date();
@@ -102,10 +119,16 @@ function rowsFromCSV(csvRows) {
       const promisedDate = parseDate(promisedRaw);
       if (!order) return null;
 
-      const progressRaw = (r[idx.progress] || "").trim().toLowerCase();
-      const progress = progressRaw === "refunded" ? "refunded" : "pending";
+      const progress = progressFromRaw(r[idx.progress] || "");
+      const statusDate =
+        idx.statusDate >= 0 ? parseDate((r[idx.statusDate] || "").trim()) : null;
 
-      const daysOverdue = promisedDate ? daysBetween(promisedDate, today) : null;
+      // Closed cases stop counting on the date the status was updated;
+      // without a Status Date we fall back to a live count.
+      const closed = CLOSED_STATUSES.has(progress);
+      const countUntil = closed && statusDate ? statusDate : today;
+
+      const daysOverdue = promisedDate ? daysBetween(promisedDate, countUntil) : null;
       const urgency = daysOverdue === null ? "ok" : urgencyFor(daysOverdue);
 
       return {
@@ -116,6 +139,7 @@ function rowsFromCSV(csvRows) {
         daysOverdue,
         urgency,
         progress,
+        closed,
       };
     })
     .filter(Boolean);
@@ -212,8 +236,8 @@ function render() {
         const promisedLabel = r.promisedDate
           ? r.promisedDate.toLocaleDateString()
           : r.promisedRaw || "—";
-        const rowClass = r.progress === "refunded" ? "row-refunded" : `row-${r.urgency}`;
-        const pillClass = r.progress === "refunded" ? "refunded" : r.urgency;
+        const rowClass = r.closed ? `row-${r.progress}` : `row-${r.urgency}`;
+        const pillClass = r.closed ? r.progress : r.urgency;
         return `
           <tr class="${rowClass}">
             <td>${escapeHTML(r.va)}</td>
@@ -227,7 +251,10 @@ function render() {
       .join("");
   }
 
-  const counts = { pending: 0, refunded: 0, ok: 0, yellow: 0, orange: 0, red: 0 };
+  const counts = {
+    pending: 0, refunded: 0, chargeback: 0, ethoca: 0,
+    ok: 0, yellow: 0, orange: 0, red: 0,
+  };
   state.rows.forEach((r) => {
     counts[r.progress]++;
     if (r.progress === "pending") counts[r.urgency]++;
@@ -238,6 +265,8 @@ function render() {
   document.getElementById("countOrange").textContent = counts.orange;
   document.getElementById("countRed").textContent = counts.red;
   document.getElementById("countRefunded").textContent = counts.refunded;
+  document.getElementById("countChargeback").textContent = counts.chargeback;
+  document.getElementById("countEthoca").textContent = counts.ethoca;
 }
 
 function escapeHTML(str) {
