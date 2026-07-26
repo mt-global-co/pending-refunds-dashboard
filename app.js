@@ -105,7 +105,7 @@ function rowsFromCSV(csvRows) {
     promised: header.findIndex((h) => headerKey(h) === "promised date"),
     progress: header.findIndex((h) => headerKey(h) === "status"),
     statusDate: header.findIndex((h) =>
-      ["status date", "date updated", "updated", "closed date"].includes(headerKey(h))
+      ["date refunded", "status date", "date updated", "updated", "closed date"].includes(headerKey(h))
     ),
   };
 
