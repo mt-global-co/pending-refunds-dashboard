@@ -59,8 +59,10 @@ function parseDate(str) {
   if (!str) return null;
   const parts = str.trim().split("/");
   if (parts.length !== 3) return null;
-  const [m, d, y] = parts.map((p) => parseInt(p, 10));
+  let [m, d, y] = parts.map((p) => parseInt(p, 10));
   if (!m || !d || !y) return null;
+  if (y < 100) y += 2000; // two-digit year like 7/24/26
+  if (y < 2000 || y > 2100) return null; // typo years like 0206
   return new Date(y, m - 1, d);
 }
 
@@ -128,7 +130,10 @@ function rowsFromCSV(csvRows) {
       const closed = CLOSED_STATUSES.has(progress);
       const countUntil = closed && statusDate ? statusDate : today;
 
-      const daysOverdue = promisedDate ? daysBetween(promisedDate, countUntil) : null;
+      // Closed before (or not yet past) the promised date = 0 days overdue.
+      const daysOverdue = promisedDate
+        ? Math.max(0, daysBetween(promisedDate, countUntil))
+        : null;
       const urgency = daysOverdue === null ? "ok" : urgencyFor(daysOverdue);
 
       return {
