@@ -55,16 +55,13 @@
         <select id="vaFilter">
           <option value="">All VAs</option>
         </select>
-        <select id="statusFilter">
-          <option value="">All Progress</option>
-          <option value="pending">Pending</option>
-          <option value="refunded">Refunded</option>
-          <option value="chargeback">Chargeback</option>
-          <option value="ethoca">Ethoca Alert</option>
-        </select>
+        <label class="toggle-label">
+          <input type="checkbox" id="showClosedToggle" />
+          <span>Show Closed Orders</span>
+        </label>
       </div>
 
-      <p class="sidebar-footer">Data pulled live from Google Sheets. Auto-refreshes every 30 seconds and whenever you return to this tab.</p>
+      <p class="sidebar-footer">Data pulled live from Google Sheets. Closed orders hidden by default. Auto-refreshes every 30 seconds and whenever you return to this tab.</p>
     </aside>
 
     <main>

@@ -141,6 +141,21 @@ body {
   width: 100%;
 }
 
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 9px 0;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
 .controls input::placeholder {
   color: var(--text-muted);
 }

@@ -12,6 +12,7 @@ const state = {
   search: "",
   vaFilter: "",
   statusFilter: "",
+  showClosed: false, // Hide refunded/chargeback/ethoca by default
 };
 
 function parseCSV(text) {
@@ -186,6 +187,8 @@ function updateVAOptions() {
 
 function applyFiltersAndSort(rows) {
   let out = rows.filter((r) => {
+    // Hide closed statuses by default (unless showing all)
+    if (!state.showClosed && r.closed) return false;
     if (state.vaFilter && r.va !== state.vaFilter) return false;
     if (state.statusFilter && r.progress !== state.statusFilter) return false;
     if (state.search) {
@@ -267,11 +270,22 @@ function render() {
     counts[r.progress]++;
     if (r.progress === "pending") counts[r.urgency]++;
   });
-  document.getElementById("countTotal").textContent = counts.pending;
-  document.getElementById("countOk").textContent = counts.ok;
-  document.getElementById("countYellow").textContent = counts.yellow;
-  document.getElementById("countOrange").textContent = counts.orange;
-  document.getElementById("countRed").textContent = counts.red;
+  // Show counts only for pending when closed orders are hidden
+  const displayedRows = state.showClosed ? state.rows : state.rows.filter((r) => !r.closed);
+  const displayedCounts = {
+    pending: 0, ok: 0, yellow: 0, orange: 0, red: 0,
+  };
+  displayedRows.forEach((r) => {
+    if (r.progress === "pending") {
+      displayedCounts.pending++;
+      displayedCounts[r.urgency]++;
+    }
+  });
+  document.getElementById("countTotal").textContent = displayedCounts.pending;
+  document.getElementById("countOk").textContent = displayedCounts.ok;
+  document.getElementById("countYellow").textContent = displayedCounts.yellow;
+  document.getElementById("countOrange").textContent = displayedCounts.orange;
+  document.getElementById("countRed").textContent = displayedCounts.red;
   document.getElementById("countRefunded").textContent = counts.refunded;
   document.getElementById("countChargeback").textContent = counts.chargeback;
   document.getElementById("countEthoca").textContent = counts.ethoca;
@@ -296,8 +310,8 @@ function initControls() {
     render();
   });
 
-  document.getElementById("statusFilter").addEventListener("change", (e) => {
-    state.statusFilter = e.target.value;
+  document.getElementById("showClosedToggle").addEventListener("change", (e) => {
+    state.showClosed = e.target.checked;
     render();
   });
 
