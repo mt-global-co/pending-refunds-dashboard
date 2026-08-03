@@ -1,0 +1,19 @@
+# This repository is PUBLIC — it serves the dashboard via GitHub Pages.
+# Nothing containing customer data may be committed.
+
+# Working exports. refund_reasons.csv alone holds 366 email addresses,
+# 21 phone numbers, 357 customer names and their verbatim support messages.
+refund_reasons.csv
+cancellations_no_reason.csv
+cancellations_no_ticket.csv
+*.csv
+
+# Verbatim customer quotes shown on the Cancellations tab. Anonymised, but
+# still private support conversations — publishing them would make them
+# world-readable and search-indexable. Delete this line to publish them.
+cancel-quotes.js
+
+# Internal reports for management, shared as private links instead.
+refund-report.html
+cancellation-report.html
+cancellation-reasons.md

@@ -1,0 +1,260 @@
+/* Metrics views.
+ *
+ * Everything here is scoped under .mx (or a uniquely-named .mx* class) so it
+ * cannot reach the pending-refunds table, which styles bare table/th/td in
+ * style.css. Do not add unscoped element selectors to this file. */
+
+:root {
+  --mx-card-hover: #21242f;
+  --mx-faint: #666e7d;
+  --mx-good: #3ddc84;
+  --mx-good-bg: rgba(61, 220, 132, 0.12);
+  --mx-warn: #f0c419;
+  --mx-warn-bg: rgba(240, 196, 25, 0.13);
+  --mx-bad: #ff5c5c;
+  --mx-bad-bg: rgba(255, 92, 92, 0.13);
+  --mx-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* ---------- shared toolbar (sits between the tab bar and the metrics views) ---------- */
+.mxbar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 24px;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: var(--appbar-h);
+  z-index: 25;
+}
+.mxbar.active { display: flex; }
+
+.mxstatus { font-size: 0.78rem; color: var(--text-muted); }
+.mxstatus.err { color: var(--mx-bad); }
+
+.mxbar-right { display: flex; align-items: center; gap: 10px; }
+
+.mxerror {
+  display: none;
+  margin: 14px 24px 0;
+  background: var(--mx-bad-bg);
+  border: 1px solid var(--mx-bad);
+  color: var(--mx-bad);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.86rem;
+}
+.mxerror.active { display: block; }
+
+.ctl {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 11px;
+  border-radius: 7px;
+  font-size: 0.86rem;
+  font-family: inherit;
+}
+.ctl:focus { outline: none; border-color: var(--accent); }
+
+/* ---------- metrics view container ---------- */
+.view.mx.active {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px 24px 70px;
+}
+
+.mx .panel-intro { max-width: 76ch; display: flex; flex-direction: column; gap: 6px; }
+.mx .panel-intro h2 { margin: 0; font-size: 1.28rem; }
+.mx .panel-intro p { margin: 0; color: var(--text-muted); font-size: 0.88rem; line-height: 1.5; }
+
+.mx .block {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 17px 19px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-width: 0;
+}
+.mx .block h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 650;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mx .hint, .mxbar .hint { font-size: 0.75rem; color: var(--mx-faint); font-weight: 400; }
+
+.mx .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 15px; }
+
+/* ---------- cards ---------- */
+.mx .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 11px; }
+
+.mx .card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mx .card .v {
+  font-family: var(--mx-mono);
+  font-size: 1.55rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.mx .card .k { font-size: 0.77rem; color: var(--text-muted); }
+.mx .card .n { font-size: 0.69rem; color: var(--mx-faint); font-family: var(--mx-mono); }
+.mx .card.good .v { color: var(--mx-good); }
+.mx .card.warn .v { color: var(--mx-warn); }
+.mx .card.bad .v { color: var(--mx-bad); }
+.mx .card.accent .v { color: var(--accent); }
+
+/* ---------- tables (scoped: must never leak to the pending table) ---------- */
+.mx .tw { overflow-x: auto; }
+.mx .tw.scroll { max-height: 520px; overflow-y: auto; }
+
+.mx .tw table { width: 100%; border-collapse: collapse; font-size: 0.84rem; table-layout: auto; }
+.mx .tw th,
+.mx .tw td {
+  text-align: left;
+  padding: 8px 11px;
+  border-bottom: 1px solid var(--border);
+  white-space: normal;
+}
+.mx .tw thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #1e212b;
+  color: var(--text-muted);
+  font-size: 0.69rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+}
+.mx .tw td.num, .mx .tw th.num {
+  text-align: right;
+  font-family: var(--mx-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mx .tw tbody tr:last-child td { border-bottom: none; }
+.mx .tw tbody tr:hover { background: var(--mx-card-hover); }
+.mx .tw th.bar-h { width: 22%; min-width: 100px; }
+
+.mx .trk { background: var(--border); border-radius: 3px; height: 8px; overflow: hidden; min-width: 56px; }
+.mx .trk > i { display: block; height: 100%; background: var(--accent); }
+.mx .trk > i.good { background: var(--mx-good); }
+.mx .trk > i.warn { background: var(--mx-warn); }
+.mx .trk > i.bad { background: var(--mx-bad); }
+
+.mx .inp-orders {
+  width: 90px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-family: var(--mx-mono);
+  font-size: 0.81rem;
+  text-align: right;
+}
+.mx .inp-orders:focus { outline: none; border-color: var(--accent); }
+
+.mx .pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.71rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mx .pill.refunded { background: var(--mx-good-bg); color: var(--mx-good); }
+.mx .pill.pending { background: var(--mx-warn-bg); color: var(--mx-warn); }
+.mx .pill.flag { background: var(--mx-bad-bg); color: var(--mx-bad); margin: 1px 3px 1px 0; }
+
+.mx .row-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* totals row on the cancellation reason table */
+.mx .tw tbody tr.tot td {
+  border-top: 2px solid var(--border);
+  font-weight: 650;
+  background: rgba(79, 140, 255, 0.08);
+}
+
+/* ---------- customer quotes ---------- */
+.mx .quotes-list { display: flex; flex-direction: column; gap: 9px; max-height: 560px; overflow-y: auto; }
+
+.mx .qrow {
+  border-left: 2px solid var(--accent);
+  background: var(--bg);
+  border-radius: 0 8px 8px 0;
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.mx .qmeta { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.mx .qid { font-family: var(--mx-mono); font-size: 12px; color: var(--accent); font-weight: 600; }
+.mx .qv { font-family: var(--mx-mono); font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mx .qtext { font-size: 14px; line-height: 1.5; color: var(--text); font-style: italic; }
+.mx .qcat { font-size: 11.5px; color: var(--mx-faint); }
+
+/* style.css pins .btn to flex-start, which misaligns it inside a flex row */
+.mx .btn { align-self: auto; }
+.mx .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+.mx .btn.ghost:hover { color: var(--text); border-color: var(--accent); }
+.mx .ctl.grow { flex: 1; min-width: 180px; }
+
+/* ---------- issues ---------- */
+.mx .issues { display: flex; flex-direction: column; gap: 9px; }
+
+.mx .issue {
+  border-left: 3px solid var(--mx-bad);
+  background: var(--mx-bad-bg);
+  border-radius: 0 8px 8px 0;
+  padding: 11px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.mx .issue.warn { border-left-color: var(--mx-warn); background: var(--mx-warn-bg); }
+.mx .issue.ok { border-left-color: var(--mx-good); background: var(--mx-good-bg); }
+.mx .issue .h { font-weight: 650; font-size: 0.87rem; display: flex; gap: 9px; align-items: baseline; flex-wrap: wrap; }
+.mx .issue .h .c { font-family: var(--mx-mono); font-size: 0.76rem; opacity: 0.85; font-weight: 400; }
+.mx .issue .d { font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
+.mx .issue .list { font-family: var(--mx-mono); font-size: 0.75rem; color: var(--text-muted); word-break: break-word; }
+
+/* ---------- policy ladder ---------- */
+.mx .ladder { margin: 0; padding-left: 19px; display: flex; flex-direction: column; gap: 11px; font-size: 0.87rem; }
+.mx .ladder li { color: var(--text-muted); line-height: 1.5; }
+.mx .ladder li b { color: var(--text); font-weight: 650; }
+.mx .ladder .ev {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  font-family: var(--mx-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .mxbar { padding: 9px 16px; }
+  .mxerror { margin-left: 16px; margin-right: 16px; }
+  .view.mx.active { padding: 16px 16px 60px; }
+}

@@ -21,6 +21,7 @@
   --ethoca: #3fc1c9;
   --ethoca-bg: rgba(63, 193, 201, 0.12);
   --accent: #4f8cff;
+  --appbar-h: 52px;
 }
 
 * { box-sizing: border-box; }
@@ -34,7 +35,7 @@ body {
 
 .layout {
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--appbar-h));
 }
 
 /* Sidebar */
@@ -48,8 +49,8 @@ body {
   flex-direction: column;
   gap: 22px;
   position: sticky;
-  top: 0;
-  height: 100vh;
+  top: var(--appbar-h);
+  height: calc(100vh - var(--appbar-h));
   overflow-y: auto;
 }
 
@@ -83,6 +84,51 @@ body {
 .btn:hover {
   opacity: 0.9;
 }
+
+/* ---------- App shell (tab bar shared by every view) ---------- */
+.appbar {
+  height: var(--appbar-h);
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 20px;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  overflow-x: auto;
+}
+
+.appbrand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.appbrand strong { font-size: 0.92rem; }
+.appbrand span { font-size: 0.78rem; color: var(--text-muted); }
+
+.apptabs { display: flex; gap: 4px; }
+
+.apptab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 6px 13px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.apptab:hover { color: var(--text); background: var(--card-bg); }
+.apptab.active { color: var(--text); background: var(--card-bg); border-color: var(--border); }
+
+.view { display: none; }
+.view.active { display: block; }
 
 .summary {
   display: grid;
@@ -183,7 +229,7 @@ main {
 .table-wrap {
   overflow-y: auto;
   overflow-x: hidden;
-  max-height: calc(100vh - 56px);
+  max-height: calc(100vh - var(--appbar-h) - 56px);
   border-radius: 10px;
   border: 1px solid var(--border);
   scrollbar-color: var(--border) var(--card-bg);

@@ -1,7 +1,15 @@
 // Google Sheet source (must remain shared as "Anyone with the link can view")
+//
+// Wrapped in an IIFE so `state` here cannot collide with metrics.js on the
+// same page.
+(function () {
+
 const SHEET_ID = "19WihBvQ8fUmkj9ioqvZMapAZAVFMij_6_Ca4rCWYh6k";
 const GID = "0";
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+// Use /export, not gviz: gviz applies whatever filter is active on the sheet,
+// which hid every non-pending row and left the Refunded / Chargeback / Ethoca
+// counts permanently at zero. /export returns the sheet as stored.
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
 
 const REFRESH_INTERVAL_MS = 30 * 1000;
 
@@ -342,3 +350,5 @@ fetchData();
 setInterval(fetchData, REFRESH_INTERVAL_MS);
 document.addEventListener("visibilitychange", refreshIfStale);
 window.addEventListener("focus", refreshIfStale);
+
+})();

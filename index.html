@@ -5,86 +5,334 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pending Refunds Dashboard</title>
 <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="metrics.css" />
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1>Pending Refunds</h1>
-        <span id="lastUpdated" class="last-updated">Loading…</span>
-        <button id="refreshBtn" class="btn">Refresh</button>
-      </div>
 
-      <div class="summary" id="summary">
-        <div class="summary-card total">
-          <span class="summary-count" id="countTotal">0</span>
-          <span class="summary-label">Total Pending</span>
-        </div>
-        <div class="summary-card ok">
-          <span class="summary-count" id="countOk">0</span>
-          <span class="summary-label">On Time</span>
-        </div>
-        <div class="summary-card yellow">
-          <span class="summary-count" id="countYellow">0</span>
-          <span class="summary-label">5+ Days Overdue</span>
-        </div>
-        <div class="summary-card orange">
-          <span class="summary-count" id="countOrange">0</span>
-          <span class="summary-label">7+ Days Overdue</span>
-        </div>
-        <div class="summary-card red">
-          <span class="summary-count" id="countRed">0</span>
-          <span class="summary-label">10+ Days Overdue</span>
-        </div>
-        <div class="summary-card refunded">
-          <span class="summary-count" id="countRefunded">0</span>
-          <span class="summary-label">Refunded</span>
-        </div>
-        <div class="summary-card chargeback">
-          <span class="summary-count" id="countChargeback">0</span>
-          <span class="summary-label">Chargeback</span>
-        </div>
-        <div class="summary-card ethoca total">
-          <span class="summary-count" id="countEthoca">0</span>
-          <span class="summary-label">Ethoca Alert</span>
-        </div>
-      </div>
+  <header class="appbar">
+    <div class="appbrand">
+      <strong>Montanello UK</strong>
+      <span>Refunds</span>
+    </div>
+    <nav class="apptabs" id="appTabs">
+      <button class="apptab active" data-view="pending">Pending Refunds</button>
+      <button class="apptab" data-view="refunds">Refunds</button>
+      <button class="apptab" data-view="cancels">Cancellations</button>
+      <button class="apptab" data-view="ladder">Save-Rate Ladder</button>
+      <button class="apptab" data-view="rate">Refund Rate</button>
+      <button class="apptab" data-view="recon">Reconciliation</button>
+    </nav>
+  </header>
 
-      <div class="controls">
-        <input type="text" id="searchInput" placeholder="Search by VA or Order Number…" />
-        <select id="vaFilter">
-          <option value="">All VAs</option>
-        </select>
-        <label class="toggle-label">
-          <input type="checkbox" id="showClosedToggle" />
-          <span>Show Closed Orders</span>
-        </label>
-      </div>
+  <!-- ==================== PENDING REFUNDS (unchanged behaviour) ==================== -->
+  <div class="view active" id="view-pending">
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h1>Pending Refunds</h1>
+          <span id="lastUpdated" class="last-updated">Loading…</span>
+          <button id="refreshBtn" class="btn">Refresh</button>
+        </div>
 
-      <p class="sidebar-footer">Data pulled live from Google Sheets. Closed orders hidden by default. Auto-refreshes every 30 seconds and whenever you return to this tab.</p>
-    </aside>
+        <div class="summary" id="summary">
+          <div class="summary-card total">
+            <span class="summary-count" id="countTotal">0</span>
+            <span class="summary-label">Total Pending</span>
+          </div>
+          <div class="summary-card ok">
+            <span class="summary-count" id="countOk">0</span>
+            <span class="summary-label">On Time</span>
+          </div>
+          <div class="summary-card yellow">
+            <span class="summary-count" id="countYellow">0</span>
+            <span class="summary-label">5+ Days Overdue</span>
+          </div>
+          <div class="summary-card orange">
+            <span class="summary-count" id="countOrange">0</span>
+            <span class="summary-label">7+ Days Overdue</span>
+          </div>
+          <div class="summary-card red">
+            <span class="summary-count" id="countRed">0</span>
+            <span class="summary-label">10+ Days Overdue</span>
+          </div>
+          <div class="summary-card refunded">
+            <span class="summary-count" id="countRefunded">0</span>
+            <span class="summary-label">Refunded</span>
+          </div>
+          <div class="summary-card chargeback">
+            <span class="summary-count" id="countChargeback">0</span>
+            <span class="summary-label">Chargeback</span>
+          </div>
+          <div class="summary-card ethoca total">
+            <span class="summary-count" id="countEthoca">0</span>
+            <span class="summary-label">Ethoca Alert</span>
+          </div>
+        </div>
 
-    <main>
-      <div id="errorBox" class="error-box" hidden></div>
-      <div class="table-wrap">
-        <table id="refundsTable">
-          <thead>
-            <tr>
-              <th data-sort="va">VA</th>
-              <th data-sort="order">Order Number</th>
-              <th data-sort="promised">Promised Date</th>
-              <th data-sort="days">Days Overdue</th>
-              <th data-sort="status">Progress</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody">
-            <tr><td colspan="5" class="loading-row">Loading refund data…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </main>
+        <div class="controls">
+          <input type="text" id="searchInput" placeholder="Search by VA or Order Number…" />
+          <select id="vaFilter">
+            <option value="">All VAs</option>
+          </select>
+          <label class="toggle-label">
+            <input type="checkbox" id="showClosedToggle" />
+            <span>Show Closed Orders</span>
+          </label>
+        </div>
+
+        <p class="sidebar-footer">Data pulled live from Google Sheets. Closed orders hidden by default. Auto-refreshes every 30 seconds and whenever you return to this tab.</p>
+      </aside>
+
+      <main>
+        <div id="errorBox" class="error-box" hidden></div>
+        <div class="table-wrap">
+          <table id="refundsTable">
+            <thead>
+              <tr>
+                <th data-sort="va">VA</th>
+                <th data-sort="order">Order Number</th>
+                <th data-sort="promised">Promised Date</th>
+                <th data-sort="days">Days Overdue</th>
+                <th data-sort="status">Progress</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr><td colspan="5" class="loading-row">Loading refund data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
   </div>
 
+  <!-- ==================== METRICS VIEWS ==================== -->
+  <div class="mxbar" id="mxBar">
+    <span id="mxStatus" class="mxstatus">Loading metrics…</span>
+    <div class="mxbar-right">
+      <select id="monthFilter" class="ctl" title="Reporting month"></select>
+      <button id="mxRefresh" class="btn">Refresh</button>
+    </div>
+  </div>
+  <div id="mxError" class="mxerror" hidden></div>
+
+  <!-- ---- Refunds ---- -->
+  <div class="view mx" id="view-refunds">
+    <div class="panel-intro">
+      <h2>Refunds</h2>
+      <p>Every refund paid, live from the refund tracker. Use the month selector above to narrow the period —
+         leave it on “All months” to see the whole history.</p>
+    </div>
+
+    <div class="cards" id="refundCards"></div>
+
+    <div class="grid-2">
+      <div class="block">
+        <h3>By reason <span class="hint">as recorded by the team</span></h3>
+        <div class="tw"><table id="reasonTable">
+          <thead><tr><th>Reason</th><th class="num">Refunds</th><th class="num">Share</th><th class="num">Value</th><th class="num">Avg</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+      <div class="block">
+        <h3>By agent</h3>
+        <div class="tw"><table id="refundAgentTable">
+          <thead><tr><th>Agent</th><th class="num">Refunds</th><th class="num">Value</th><th class="num">Avg</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>All refunds <span class="hint">search by order number, agent or reason</span></h3>
+      <div class="row-actions">
+        <input type="text" id="refundSearch" class="ctl grow" placeholder="Search…" />
+        <button id="exportRefunds" class="btn">Export CSV</button>
+      </div>
+      <div class="tw scroll"><table id="refundTable">
+        <thead><tr><th>Order</th><th>Agent</th><th>Date</th><th>Reason</th><th class="num">Tier</th><th class="num">Value</th><th>Store</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="hint" id="refundCount"></div>
+    </div>
+  </div>
+
+  <!-- ---- Cancellations ---- -->
+  <div class="view mx" id="view-cancels">
+    <div class="panel-intro">
+      <h2>Cancellations</h2>
+      <p>Orders refunded without ever shipping — cancelled before dispatch, or sold when the stock was not there.
+         Counts and values are live; the reasons underneath come from reading the support tickets and cover July 2026.</p>
+    </div>
+
+    <div class="cards" id="cancelCards"></div>
+
+    <div class="grid-2">
+      <div class="block">
+        <h3>By month <span class="hint">cancellations and out-of-stock</span></h3>
+        <div class="tw"><table id="cancelMonthTable">
+          <thead><tr><th>Month</th><th class="num">Orders</th><th class="num">Value</th><th class="num">% of refunds</th><th class="bar-h">Share</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+      <div class="block">
+        <h3>By agent</h3>
+        <div class="tw"><table id="cancelAgentTable">
+          <thead><tr><th>Agent</th><th class="num">Orders</th><th class="num">Value</th><th class="num">Avg</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Why customers cancelled <span class="hint">from support tickets · July 2026 · 71 orders</span></h3>
+      <div class="tw"><table id="cancelReasonTable">
+        <thead><tr><th>Reason</th><th class="num">Orders</th><th class="num">Value</th><th class="num">Avg</th><th class="bar-h">Share</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </div>
+
+    <div class="block" id="quoteBlock" hidden>
+      <h3>In their own words <span class="hint">verbatim from the tickets</span></h3>
+      <div class="row-actions">
+        <select id="quoteFilter" class="ctl">
+          <option value="">All reasons</option>
+        </select>
+        <input type="text" id="quoteSearch" class="ctl grow" placeholder="Search the quotes…" />
+      </div>
+      <div id="quoteList" class="quotes-list"></div>
+      <div class="hint" id="quoteCount"></div>
+    </div>
+  </div>
+
+  <!-- ---- Save-Rate Ladder ---- -->
+  <div class="view mx" id="view-ladder">
+    <div class="panel-intro">
+      <h2>Save-Rate Ladder</h2>
+      <p>Every refund settled below 100% keeps money in the business. Saving is calculated per case from the
+         recorded refund percentage: a £19.98 refund logged at 40% implies a £49.95 order, so £29.97 was retained.</p>
+    </div>
+
+    <div class="cards" id="ladderCards"></div>
+
+    <div class="grid-2">
+      <div class="block">
+        <h3>By agent <span class="hint">acceptance is the share of that agent's refunds settled below full</span></h3>
+        <div class="tw"><table id="agentTable">
+          <thead><tr>
+            <th>Agent</th><th class="num">Refunds</th><th class="num">Partial</th>
+            <th class="num">Acceptance</th><th class="num">Saved</th><th class="num">Save rate</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <div class="block">
+        <h3>Tier usage <span class="hint">which offers are actually being made</span></h3>
+        <div class="tw"><table id="tierTable">
+          <thead><tr>
+            <th>Tier</th><th class="num">Cases</th><th class="num">Share</th><th class="num">Paid out</th><th class="num">Saved</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Proposed policy ladder <span class="hint">draft — offer in this order, escalate only if declined</span></h3>
+      <ol class="ladder" id="ladderSteps">
+        <li><b>Step 1 — Keep the item, partial refund.</b> Offer 40% where the complaint is quality, sizing or minor damage
+            and the item is usable. No return shipping, customer keeps the goods.
+            <em class="ev" data-ev="tier40"></em></li>
+        <li><b>Step 2 — Exchange.</b> If the partial is declined and the issue is sizing or a wrong item, offer a
+            replacement in the correct size before offering money back. Keeps the sale.
+            <em class="ev" data-ev="sizing"></em></li>
+        <li><b>Step 3 — Higher partial.</b> Escalate to 50–60% before conceding a full refund.
+            <em class="ev" data-ev="tierHigh"></em></li>
+        <li><b>Step 4 — Full refund.</b> Automatic where the order never shipped, went out of stock, was lost in transit,
+            or is a duplicate — a partial is not defensible in those cases.
+            <em class="ev" data-ev="full"></em></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ---- Refund Rate ---- -->
+  <div class="view mx" id="view-rate">
+    <div class="panel-intro">
+      <h2>Refund Rate</h2>
+      <p>Refund value alone cannot tell you whether things are getting worse — a bigger month produces more refunds.
+         The rate needs a denominator, and no tracker records order volume. Enter the weekly order count below
+         and it is saved in this browser, building the trend from here on.</p>
+    </div>
+
+    <div class="cards" id="rateCards"></div>
+
+    <div class="block">
+      <h3>Weekly <span class="hint">type the order count for each week — figures persist in this browser</span></h3>
+      <div class="tw"><table id="weekTable">
+        <thead><tr>
+          <th>Week beginning</th><th class="num">Refunds</th><th class="num">Refund value</th>
+          <th class="num">Orders placed</th><th class="num">Refund rate</th><th class="bar-h">Rate</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="row-actions">
+        <button id="clearOrders" class="btn ghost">Clear saved order counts</button>
+        <span class="hint" id="ordersSavedNote"></span>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Monthly refund value <span class="hint">all stores in the refund tracker</span></h3>
+      <div class="tw"><table id="monthTable">
+        <thead><tr><th>Month</th><th class="num">Refunds</th><th class="num">Value</th><th class="num">Avg</th><th class="bar-h">Value</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ---- Reconciliation ---- -->
+  <div class="view mx" id="view-recon">
+    <div class="panel-intro">
+      <h2>Reconciliation</h2>
+      <p>Both trackers read live and matched on order number, so these checks run continuously instead of by hand.
+         Anything listed here is costing you accuracy in every total you read off these sheets.</p>
+    </div>
+
+    <div class="cards" id="reconCards"></div>
+
+    <div class="block">
+      <h3>Issues found</h3>
+      <div id="issueList" class="issues"></div>
+    </div>
+
+    <div class="block">
+      <h3>Unified ledger <span class="hint">both trackers in one view</span></h3>
+      <div class="row-actions">
+        <input type="text" id="ledgerSearch" class="ctl grow" placeholder="Search order number, agent or reason…" />
+        <select id="ledgerScope" class="ctl">
+          <option value="all">All records</option>
+          <option value="refunded">Refunded only</option>
+          <option value="pending">Pending only</option>
+          <option value="issues">Issues only</option>
+        </select>
+        <button id="exportCsv" class="btn">Export CSV</button>
+      </div>
+      <div class="tw scroll"><table id="ledgerTable">
+        <thead><tr>
+          <th>State</th><th>Order</th><th>Agent</th><th>Date</th>
+          <th>Reason</th><th class="num">Tier</th><th class="num">Value</th><th>Store</th><th>Flags</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="hint" id="ledgerCount"></div>
+    </div>
+  </div>
+
+  <script src="shell.js"></script>
   <script src="app.js"></script>
+  <!-- Customer quotes, kept out of the public repo. A 404 here is expected and
+       harmless: the Cancellations tab hides its quotes section without it. -->
+  <script src="cancel-quotes.js" onerror="void 0"></script>
+  <script src="metrics.js"></script>
 </body>
 </html>
