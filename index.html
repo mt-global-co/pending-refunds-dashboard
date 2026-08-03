@@ -4,8 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pending Refunds Dashboard</title>
-<link rel="stylesheet" href="style.css" />
-<link rel="stylesheet" href="metrics.css" />
+<!-- ?v= must be bumped on every deploy. Without it a browser can pair new
+     HTML with a cached older script and the page breaks silently. -->
+<link rel="stylesheet" href="style.css?v=20260803c" />
+<link rel="stylesheet" href="metrics.css?v=20260803c" />
 </head>
 <body>
 
@@ -270,11 +272,11 @@
     </div>
   </div>
 
-  <script src="shell.js"></script>
-  <script src="app.js"></script>
+  <script src="shell.js?v=20260803c"></script>
+  <script src="app.js?v=20260803c"></script>
   <!-- Customer quotes, kept out of the public repo. A 404 here is expected and
        harmless: the Cancellations tab hides its quotes section without it. -->
-  <script src="cancel-quotes.js" onerror="void 0"></script>
-  <script src="metrics.js"></script>
+  <script src="cancel-quotes.js?v=20260803c" onerror="void 0"></script>
+  <script src="metrics.js?v=20260803c"></script>
 </body>
 </html>

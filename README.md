@@ -75,6 +75,14 @@ sheet URL when that tab is open.
 Read through `/export?format=csv`, **not** `gviz` — gviz applies whatever
 filter is active on a tab and will silently return only the visible rows.
 
+## Deploying
+
+GitHub Pages caches HTML and scripts separately, so a browser can end up
+pairing new HTML with an older cached script. **Bump the `?v=` string on the
+`<script>` and `<link>` tags in `index.html` every time you deploy** — all of
+them, to the same value. If one is missed the page can break for anyone
+holding a cached copy.
+
 ## Local preview
 
 This is a static site — open `index.html` directly, or serve it locally:

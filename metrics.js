@@ -718,6 +718,17 @@ function init() {
   });
 }
 
-init();
+// A stale cached copy of this file paired with newer HTML would otherwise
+// throw here and leave the page sitting on "Loading metrics…" forever.
+try {
+  init();
+} catch (e) {
+  const s = document.getElementById("mxStatus");
+  if (s) { s.textContent = "Metrics failed to start."; s.classList.add("err"); }
+  showError("The metrics tabs could not start: " + e.message +
+    ". This is usually a cached copy of an older dashboard — reload the page, " +
+    "or press Ctrl+Shift+R. The pending queue above is unaffected.");
+  console.error(e);
+}
 
 })();
