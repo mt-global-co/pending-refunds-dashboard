@@ -4,8 +4,10 @@
 // same page.
 (function () {
 
-const SHEET_ID = "19WihBvQ8fUmkj9ioqvZMapAZAVFMij_6_Ca4rCWYh6k";
-const GID = "0";
+// Single "Refunds" workbook, "Pending Refunds" tab. The old standalone
+// pending sheet (19WihBv…) was retired on 3 Aug 2026.
+const SHEET_ID = "18nZ5isXR5KOKwftQKfCMucsgEm4n_kVwTeVbZlebKoI";
+const GID = "478000033";
 // Use /export, not gviz: gviz applies whatever filter is active on the sheet,
 // which hid every non-pending row and left the Refunded / Chargeback / Ethoca
 // counts permanently at zero. /export returns the sheet as stored.

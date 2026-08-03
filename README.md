@@ -49,18 +49,31 @@ function onEdit(e) {
 }
 ```
 
-## Updating the source sheet
+## Source data
 
-If you ever need to point this at a different sheet or tab, edit the
-constants at the top of [`app.js`](app.js):
+Everything comes from one Google Sheet — the **Refunds** workbook,
+`18nZ5isXR5KOKwftQKfCMucsgEm4n_kVwTeVbZlebKoI` — across three tabs:
 
-```js
-const SHEET_ID = "19WihBvQ8fUmkj9ioqvZMapAZAVFMij_6_Ca4rCWYh6k";
-const GID = "0";
-```
+| Tab | gid | Used for |
+|---|---|---|
+| Refunds | `1691212125` | Refunds paid, Save-Rate Ladder, historical cancellations |
+| Cancellation | `1204712776` | Live cancellation reasons |
+| Pending Refunds | `478000033` | The pending queue |
 
-`SHEET_ID` is the long string in the sheet's URL; `GID` is the tab id
-(`gid=` in the URL when that tab is open).
+The standalone "Pending Refunds" sheet (`19WihBv…`) was retired on
+3 August 2026 and is no longer read.
+
+Cancellations are logged on the **Cancellation** tab and no longer added to
+**Refunds**, so a cancellation appears in exactly one of the two. The
+dashboard concatenates them without deduplicating, which is safe only while
+that stays true.
+
+To repoint it, edit `SHEET_ID` / `GID` at the top of [`app.js`](app.js) and
+the `SOURCES` block in [`metrics.js`](metrics.js). `gid` is the number in the
+sheet URL when that tab is open.
+
+Read through `/export?format=csv`, **not** `gviz` — gviz applies whatever
+filter is active on a tab and will silently return only the visible rows.
 
 ## Local preview
 

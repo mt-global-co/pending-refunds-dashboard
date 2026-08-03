@@ -9,9 +9,17 @@
  */
 (function () {
 
+/* All three tabs now live in one "Refunds" workbook. The old standalone
+ * pending sheet (19WihBv…) was retired on 3 Aug 2026.
+ *
+ * Cancellations moved to their own tab with a "Reason for Cancellation"
+ * dropdown, and the Refunds tab stopped receiving them — so a cancellation
+ * appears in exactly one of the two. They are combined, not deduplicated. */
+const SHEET_ID = "18nZ5isXR5KOKwftQKfCMucsgEm4n_kVwTeVbZlebKoI";
 const SOURCES = {
-  refunds: { id: "18nZ5isXR5KOKwftQKfCMucsgEm4n_kVwTeVbZlebKoI", gid: "1691212125" },
-  pending: { id: "19WihBvQ8fUmkj9ioqvZMapAZAVFMij_6_Ca4rCWYh6k", gid: "0" },
+  refunds:      { id: SHEET_ID, gid: "1691212125" },  // Refunds
+  cancellations:{ id: SHEET_ID, gid: "1204712776" },  // Cancellation
+  pending:      { id: SHEET_ID, gid: "478000033"  },  // Pending Refunds
 };
 
 // Order numbers below this belong to the store the pending tracker covers.
@@ -64,12 +72,16 @@ const CANCEL_REASONS = {
 
 const CANCEL_QUOTES = window.CANCEL_QUOTES || {};
 
-/** A refund that never shipped: cancelled before dispatch, or sold without stock. */
-const isCancelType = (r) => /cancel|out of stock|duplicate order/i.test(r.reason);
+/** A refund that never shipped: cancelled before dispatch, or sold without
+ *  stock. Anything on the Cancellation tab qualifies by definition — its
+ *  reasons ("Delivery Timeline") do not contain the word "cancel". */
+const isCancelType = (r) =>
+  r.source === "cancellation" || /cancel|out of stock|duplicate order/i.test(r.reason);
 const REFRESH_MS = 5 * 60 * 1000;
 
 const state = {
-  refunds: [],
+  refunds: [],      // Refunds tab + Cancellation tab combined
+  cancelTab: [],    // Cancellation tab alone, for its live reason breakdown
   pending: [],
   month: "",        // "" = all months (Refunds and Save-Rate Ladder)
   refundSearch: "",
@@ -179,7 +191,9 @@ async function fetchCsv(url) {
   return toObjects(parseCSV(await res.text()));
 }
 
-function normaliseRefunds(rows) {
+/** Shared by the Refunds and Cancellation tabs — same shape, different
+ *  reason header. `source` records which tab a row came from. */
+function normaliseRefunds(rows, source) {
   return rows
     .map((r) => {
       const order = (r["order"] || r["order "] || "").trim();
@@ -190,6 +204,7 @@ function normaliseRefunds(rows) {
       const num = parseInt(order.replace(/[^0-9]/g, ""), 10);
       return {
         kind: "refund",
+        source,
         va: r["va"] || "",
         order,
         num: isFinite(num) ? num : 0,
@@ -197,7 +212,8 @@ function normaliseRefunds(rows) {
         dateRaw: d.raw,
         dateOk: d.ok,
         dateRepaired: !!d.repaired,
-        reason: (r["reason"] || r["reason "] || "").trim() || "(none)",
+        // "Reason for Cancellation" is the Cancellation tab's header
+        reason: (r["reason"] || r["reason "] || r["reason for cancellation"] || "").trim() || "(none)",
         tierPct: t.pct,
         tierLabel: t.label,
         isFull: t.full,
@@ -257,24 +273,29 @@ function showError(msg) {
 
 async function load() {
   const status = document.getElementById("mxStatus");
-  status.textContent = "Loading data from both trackers…";
+  status.textContent = "Loading all three tabs…";
   status.classList.remove("err");
   try {
-    const [rRows, pRows] = await Promise.all([
+    const [rRows, cRows, pRows] = await Promise.all([
       fetchCsv(csvUrl(SOURCES.refunds)),
+      fetchCsv(csvUrl(SOURCES.cancellations)),
       fetchCsv(csvUrl(SOURCES.pending)),
     ]);
-    state.refunds = normaliseRefunds(rRows);
+    const refundTab = normaliseRefunds(rRows, "refunds");
+    state.cancelTab = normaliseRefunds(cRows, "cancellation");
+    // One combined ledger: a cancellation is logged in one tab or the other,
+    // never both, so this cannot double-count.
+    state.refunds = refundTab.concat(state.cancelTab);
     state.pending = normalisePending(pRows);
     showError(null);
     buildMonthOptions();
     renderAll();
     status.textContent =
-      `${state.refunds.length} refunds · ${state.pending.length} awaiting payment · ` +
-      `updated ${new Date().toLocaleTimeString("en-GB")}`;
+      `${refundTab.length} refunds · ${state.cancelTab.length} cancellations · ` +
+      `${state.pending.length} awaiting payment · updated ${new Date().toLocaleTimeString("en-GB")}`;
   } catch (e) {
-    showError("Could not load the trackers: " + e.message +
-      ". Both sheets must stay shared as “Anyone with the link can view”.");
+    showError("Could not load the Refunds workbook: " + e.message +
+      ". It must stay shared as “Anyone with the link can view”.");
     status.textContent = "Load failed.";
     status.classList.add("err");
   }
@@ -506,6 +527,33 @@ function renderCancels() {
     .map((r) => `<tr><td>${esc(r.va)}</td><td class="num">${r.n}</td>
                  <td class="num">${gbp(r.v)}</td><td class="num">${gbp(r.v / r.n)}</td></tr>`).join("")
     || `<tr><td colspan="4" class="hint">None found.</td></tr>`;
+
+  // Live reasons straight off the Cancellation tab
+  const live = state.cancelTab.filter(inCancelRange);
+  const liveTotal = live.reduce((a, r) => a + r.value, 0);
+  const byLive = {};
+  live.forEach((r) => { (byLive[r.reason] = byLive[r.reason] || []).push(r); });
+  const liveRows = Object.entries(byLive)
+    .map(([reason, rows]) => ({ reason, n: rows.length, v: rows.reduce((a, x) => a + x.value, 0) }))
+    .sort((a, b) => b.v - a.v);
+  const maxLive = Math.max(...liveRows.map((r) => r.v), 1);
+
+  document.querySelector("#liveReasonTable tbody").innerHTML = liveRows.length
+    ? liveRows.map((r) => `
+        <tr>
+          <td>${esc(r.reason)}</td>
+          <td class="num">${r.n}</td>
+          <td class="num">${gbp(r.v)}</td>
+          <td class="num">${gbp(r.v / r.n)}</td>
+          <td><div class="trk"><i style="width:${(r.v / maxLive) * 100}%"></i></div></td>
+        </tr>`).join("") +
+      `<tr class="tot"><td>Total</td><td class="num">${live.length}</td>
+       <td class="num">${gbp(liveTotal)}</td><td class="num"></td><td></td></tr>`
+    : `<tr><td colspan="5" class="hint">No cancellations logged on that tab in this date range.</td></tr>`;
+
+  document.getElementById("liveReasonNote").textContent = state.cancelTab.length
+    ? `${state.cancelTab.length} cancellation${state.cancelTab.length === 1 ? "" : "s"} logged on the Cancellation tab in total. Cancellations recorded before that tab existed sit in the Refunds tab and carry no reason.`
+    : "Nothing logged on the Cancellation tab yet.";
 
   // July reason snapshot, valued from whatever the sheet holds for those orders
   const valueOf = {};
