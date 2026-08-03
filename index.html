@@ -19,8 +19,6 @@
       <button class="apptab" data-view="refunds">Refunds</button>
       <button class="apptab" data-view="cancels">Cancellations</button>
       <button class="apptab" data-view="ladder">Save-Rate Ladder</button>
-      <button class="apptab" data-view="rate">Refund Rate</button>
-      <button class="apptab" data-view="recon">Reconciliation</button>
     </nav>
   </header>
 
@@ -164,6 +162,21 @@
          Counts and values are live; the reasons underneath come from reading the support tickets and cover July 2026.</p>
     </div>
 
+    <div class="daterange">
+      <div class="dr-presets" id="cancelPresets">
+        <button class="chip" data-range="all">All time</button>
+        <button class="chip" data-range="30">Last 30 days</button>
+        <button class="chip" data-range="90">Last 90 days</button>
+        <button class="chip" data-range="thismonth">This month</button>
+        <button class="chip" data-range="lastmonth">Last month</button>
+      </div>
+      <div class="dr-inputs">
+        <label>From <input type="date" id="cancelFrom" class="ctl" /></label>
+        <label>To <input type="date" id="cancelTo" class="ctl" /></label>
+      </div>
+      <span class="hint" id="cancelRangeNote"></span>
+    </div>
+
     <div class="cards" id="cancelCards"></div>
 
     <div class="grid-2">
@@ -184,7 +197,9 @@
     </div>
 
     <div class="block">
-      <h3>Why customers cancelled <span class="hint">from support tickets · July 2026 · 71 orders</span></h3>
+      <h3>Why customers cancelled
+        <span class="hint">from support tickets · the 71 July orders logged as Cancellation or Out of Stock ·
+          fixed to July, so the date range above does not change it</span></h3>
       <div class="tw"><table id="cancelReasonTable">
         <thead><tr><th>Reason</th><th class="num">Orders</th><th class="num">Value</th><th class="num">Avg</th><th class="bar-h">Share</th></tr></thead>
         <tbody></tbody>
@@ -252,79 +267,6 @@
             or is a duplicate — a partial is not defensible in those cases.
             <em class="ev" data-ev="full"></em></li>
       </ol>
-    </div>
-  </div>
-
-  <!-- ---- Refund Rate ---- -->
-  <div class="view mx" id="view-rate">
-    <div class="panel-intro">
-      <h2>Refund Rate</h2>
-      <p>Refund value alone cannot tell you whether things are getting worse — a bigger month produces more refunds.
-         The rate needs a denominator, and no tracker records order volume. Enter the weekly order count below
-         and it is saved in this browser, building the trend from here on.</p>
-    </div>
-
-    <div class="cards" id="rateCards"></div>
-
-    <div class="block">
-      <h3>Weekly <span class="hint">type the order count for each week — figures persist in this browser</span></h3>
-      <div class="tw"><table id="weekTable">
-        <thead><tr>
-          <th>Week beginning</th><th class="num">Refunds</th><th class="num">Refund value</th>
-          <th class="num">Orders placed</th><th class="num">Refund rate</th><th class="bar-h">Rate</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table></div>
-      <div class="row-actions">
-        <button id="clearOrders" class="btn ghost">Clear saved order counts</button>
-        <span class="hint" id="ordersSavedNote"></span>
-      </div>
-    </div>
-
-    <div class="block">
-      <h3>Monthly refund value <span class="hint">all stores in the refund tracker</span></h3>
-      <div class="tw"><table id="monthTable">
-        <thead><tr><th>Month</th><th class="num">Refunds</th><th class="num">Value</th><th class="num">Avg</th><th class="bar-h">Value</th></tr></thead>
-        <tbody></tbody>
-      </table></div>
-    </div>
-  </div>
-
-  <!-- ---- Reconciliation ---- -->
-  <div class="view mx" id="view-recon">
-    <div class="panel-intro">
-      <h2>Reconciliation</h2>
-      <p>Both trackers read live and matched on order number, so these checks run continuously instead of by hand.
-         Anything listed here is costing you accuracy in every total you read off these sheets.</p>
-    </div>
-
-    <div class="cards" id="reconCards"></div>
-
-    <div class="block">
-      <h3>Issues found</h3>
-      <div id="issueList" class="issues"></div>
-    </div>
-
-    <div class="block">
-      <h3>Unified ledger <span class="hint">both trackers in one view</span></h3>
-      <div class="row-actions">
-        <input type="text" id="ledgerSearch" class="ctl grow" placeholder="Search order number, agent or reason…" />
-        <select id="ledgerScope" class="ctl">
-          <option value="all">All records</option>
-          <option value="refunded">Refunded only</option>
-          <option value="pending">Pending only</option>
-          <option value="issues">Issues only</option>
-        </select>
-        <button id="exportCsv" class="btn">Export CSV</button>
-      </div>
-      <div class="tw scroll"><table id="ledgerTable">
-        <thead><tr>
-          <th>State</th><th>Order</th><th>Agent</th><th>Date</th>
-          <th>Reason</th><th class="num">Tier</th><th class="num">Value</th><th>Store</th><th>Flags</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table></div>
-      <div class="hint" id="ledgerCount"></div>
     </div>
   </div>
 

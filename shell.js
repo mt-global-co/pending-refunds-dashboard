@@ -2,8 +2,9 @@
  * dashboard (app.js) and the metrics views (metrics.js) each keep their own
  * state and simply live inside these containers. */
 (function () {
-  const METRIC_VIEWS = new Set(["refunds", "cancels", "ladder", "rate", "recon"]);
-  // Views where the month selector actually filters something.
+  const METRIC_VIEWS = new Set(["refunds", "cancels", "ladder"]);
+  // Views where the month selector actually filters something. Cancellations
+  // has its own date range instead.
   const MONTH_VIEWS = new Set(["refunds", "ladder"]);
 
   function show(name) {

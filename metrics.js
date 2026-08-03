@@ -66,28 +66,22 @@ const CANCEL_QUOTES = window.CANCEL_QUOTES || {};
 
 /** A refund that never shipped: cancelled before dispatch, or sold without stock. */
 const isCancelType = (r) => /cancel|out of stock|duplicate order/i.test(r.reason);
-const ORDERS_KEY = "montanello.weeklyOrders.v1";
 const REFRESH_MS = 5 * 60 * 1000;
 
 const state = {
   refunds: [],
   pending: [],
-  month: "",        // "" = all months
-  ledgerSearch: "",
-  ledgerScope: "all",
+  month: "",        // "" = all months (Refunds and Save-Rate Ladder)
   refundSearch: "",
   quoteSearch: "",
-  weeklyOrders: loadOrders(),
-  textCells: [],    // values Sheets refuses to sum (stored as text)
+  cancelFrom: "",   // "" = unbounded (Cancellations)
+  cancelTo: "",
 };
 
 /* ---------------- utilities ---------------- */
 
 const csvUrl = (s) =>
   `https://docs.google.com/spreadsheets/d/${s.id}/export?format=csv&gid=${s.gid}&_=${Date.now()}`;
-
-const gvizUrl = (s) =>
-  `https://docs.google.com/spreadsheets/d/${s.id}/gviz/tq?tqx=out:csv&gid=${s.gid}&_=${Date.now()}`;
 
 function parseCSV(text) {
   const rows = [];
@@ -162,30 +156,19 @@ const monthName = (k) => {
   return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 };
 
-/** Monday of the week containing d. */
-function weekStart(d) {
-  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const shift = (x.getDay() + 6) % 7;
-  x.setDate(x.getDate() - shift);
-  return x;
-}
-const weekKey = (d) => {
-  const w = weekStart(d);
-  return `${w.getFullYear()}-${String(w.getMonth() + 1).padStart(2, "0")}-${String(w.getDate()).padStart(2, "0")}`;
-};
-
 function esc(s) {
   const d = document.createElement("div");
   d.textContent = s == null ? "" : String(s);
   return d.innerHTML;
 }
 
-function loadOrders() {
-  try { return JSON.parse(localStorage.getItem(ORDERS_KEY)) || {}; }
-  catch { return {}; }
-}
-function saveOrders() {
-  try { localStorage.setItem(ORDERS_KEY, JSON.stringify(state.weeklyOrders)); } catch { /* private mode */ }
+/** Is this refund inside the Cancellations tab's date range? */
+function inCancelRange(r) {
+  if (!r.date) return !state.cancelFrom && !state.cancelTo;
+  const day = `${r.date.getFullYear()}-${String(r.date.getMonth() + 1).padStart(2, "0")}-${String(r.date.getDate()).padStart(2, "0")}`;
+  if (state.cancelFrom && day < state.cancelFrom) return false;
+  if (state.cancelTo && day > state.cancelTo) return false;
+  return true;
 }
 
 /* ---------------- loading ---------------- */
@@ -260,25 +243,6 @@ function normalisePending(rows) {
     .filter(Boolean);
 }
 
-/**
- * Cross-check: /export returns a cell's contents, gviz returns what Sheets
- * evaluates. A value present in one and blank in the other is stored as text,
- * which means SUM() silently skips it and the sheet's own total is short.
- */
-async function findTextCells(refunds) {
-  try {
-    const seen = await fetchCsv(gvizUrl(SOURCES.refunds));
-    const blanks = new Set();
-    seen.forEach((r) => {
-      const order = (r["order"] || r["order "] || "").trim();
-      if (order && !(r["refund value"] || "").trim()) blanks.add(order);
-    });
-    return refunds.filter((r) => blanks.has(r.order) && r.valueOk && r.value > 0);
-  } catch {
-    return [];   // filter view unavailable; skip this check rather than fail
-  }
-}
-
 function showError(msg) {
   const err = document.getElementById("mxError");
   if (msg) {
@@ -302,7 +266,6 @@ async function load() {
     ]);
     state.refunds = normaliseRefunds(rRows);
     state.pending = normalisePending(pRows);
-    state.textCells = await findTextCells(state.refunds);
     showError(null);
     buildMonthOptions();
     renderAll();
@@ -495,15 +458,21 @@ function renderRefunds() {
 /* ---------------- render: cancellations ---------------- */
 
 function renderCancels() {
-  const cancels = state.refunds.filter(isCancelType);
-  const allRefunds = state.refunds;
+  const allRefunds = state.refunds.filter(inCancelRange);
+  const cancels = allRefunds.filter(isCancelType);
   const totalV = cancels.reduce((a, r) => a + r.value, 0);
   const allV = allRefunds.reduce((a, r) => a + r.value, 0);
 
+  const fmt = (s) => s ? new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : null;
+  const rangeLabel = (!state.cancelFrom && !state.cancelTo) ? "all time"
+    : `${fmt(state.cancelFrom) || "start"} – ${fmt(state.cancelTo) || "today"}`;
+  document.getElementById("cancelRangeNote").textContent =
+    `Showing ${cancels.length} of ${state.refunds.filter(isCancelType).length} cancellations · ${rangeLabel}`;
+
   document.getElementById("cancelCards").innerHTML = [
     card("bad", cancels.length.toString(), "Orders never shipped", "cancelled or out of stock"),
-    card("bad", gbp0(totalV), "Refunded on them", "all time"),
-    card("warn", allV ? pct(totalV / allV) : "—", "Of all refund value", "the money never earned"),
+    card("bad", gbp0(totalV), "Refunded on them", rangeLabel),
+    card("warn", allV ? pct(totalV / allV) : "—", "Of all refund value", "in this range"),
     card("", cancels.length ? gbp(totalV / cancels.length) : "—", "Average order lost", ""),
   ].join("");
 
@@ -605,280 +574,6 @@ function renderQuotes() {
     `${rows.length} of ${withQuote} quoted. ${Object.keys(CANCEL_REASONS).length - withQuote} orders gave no reason or had no ticket.`;
 }
 
-/* ---------------- render: refund rate ---------------- */
-
-function renderRate() {
-  const dated = state.refunds.filter((r) => r.date);
-
-  // weekly
-  const byWeek = {};
-  dated.forEach((r) => {
-    const k = weekKey(r.date);
-    (byWeek[k] = byWeek[k] || []).push(r);
-  });
-  const weeks = Object.keys(byWeek).sort().reverse().slice(0, 16);
-
-  let ratedWeeks = 0, refundSum = 0, orderSum = 0;
-  weeks.forEach((w) => {
-    const o = parseInt(state.weeklyOrders[w], 10);
-    if (isFinite(o) && o > 0) { ratedWeeks++; refundSum += byWeek[w].length; orderSum += o; }
-  });
-  const overall = orderSum ? refundSum / orderSum : null;
-
-  document.getElementById("rateCards").innerHTML = [
-    card(overall == null ? "" : overall > 0.1 ? "bad" : overall > 0.05 ? "warn" : "good",
-         overall == null ? "—" : pct(overall), "Refund rate", ratedWeeks ? `${ratedWeeks} weeks with order data` : "enter order counts below"),
-    card("", weeks.length ? byWeek[weeks[0]].length.toString() : "0", "Refunds, latest week", weeks[0] ? fmtWeek(weeks[0]) : ""),
-    card("warn", gbp0(dated.reduce((a, r) => a + r.value, 0)), "Refunded, all time", `${dated.length} refunds`),
-    card("", state.pending.length.toString(), "Still awaiting payment", gbp0(state.pending.reduce((a, r) => a + r.value, 0))),
-  ].join("");
-
-  const maxRate = Math.max(...weeks.map((w) => {
-    const o = parseInt(state.weeklyOrders[w], 10);
-    return isFinite(o) && o > 0 ? byWeek[w].length / o : 0;
-  }), 0.0001);
-
-  document.querySelector("#weekTable tbody").innerHTML = weeks.length
-    ? weeks.map((w) => {
-        const rows = byWeek[w];
-        const val = rows.reduce((a, r) => a + r.value, 0);
-        const o = parseInt(state.weeklyOrders[w], 10);
-        const has = isFinite(o) && o > 0;
-        const rate = has ? rows.length / o : null;
-        const cls = rate == null ? "" : rate > 0.1 ? "bad" : rate > 0.05 ? "warn" : "good";
-        return `<tr>
-          <td>${fmtWeek(w)}</td>
-          <td class="num">${rows.length}</td>
-          <td class="num">${gbp(val)}</td>
-          <td class="num"><input class="inp-orders" type="number" min="0" step="1" data-week="${w}"
-               value="${has ? o : ""}" placeholder="—" aria-label="Orders placed week of ${fmtWeek(w)}" /></td>
-          <td class="num">${rate == null ? "<span class='hint'>needs orders</span>" : pct(rate)}</td>
-          <td>${rate == null ? "" : `<div class="trk"><i class="${cls}" style="width:${(rate / maxRate) * 100}%"></i></div>`}</td>
-        </tr>`;
-      }).join("")
-    : `<tr><td colspan="6" class="hint">No dated refunds found.</td></tr>`;
-
-  document.querySelectorAll(".inp-orders").forEach((el) => {
-    el.addEventListener("change", (e) => {
-      const w = e.target.dataset.week;
-      const v = parseInt(e.target.value, 10);
-      if (isFinite(v) && v > 0) state.weeklyOrders[w] = v; else delete state.weeklyOrders[w];
-      saveOrders();
-      renderRate();
-    });
-  });
-
-  const saved = Object.keys(state.weeklyOrders).length;
-  document.getElementById("ordersSavedNote").textContent =
-    saved ? `${saved} week${saved === 1 ? "" : "s"} of order counts saved in this browser.`
-          : "Nothing saved yet — order counts live only in this browser, so enter them on the machine you report from.";
-
-  // monthly
-  const byMonth = {};
-  dated.forEach((r) => {
-    const k = monthKey(r.date);
-    (byMonth[k] = byMonth[k] || []).push(r);
-  });
-  const months = Object.keys(byMonth).sort();
-  const maxVal = Math.max(...months.map((m) => byMonth[m].reduce((a, r) => a + r.value, 0)), 1);
-
-  document.querySelector("#monthTable tbody").innerHTML = months.map((m) => {
-    const rows = byMonth[m];
-    const val = rows.reduce((a, r) => a + r.value, 0);
-    return `<tr>
-      <td>${monthName(m)}</td>
-      <td class="num">${rows.length}</td>
-      <td class="num">${gbp(val)}</td>
-      <td class="num">${gbp(val / rows.length)}</td>
-      <td><div class="trk"><i style="width:${(val / maxVal) * 100}%"></i></div></td>
-    </tr>`;
-  }).join("");
-}
-
-function fmtWeek(k) {
-  const [y, m, d] = k.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-/* ---------------- render: reconciliation ---------------- */
-
-function detectIssues() {
-  const issues = [];
-  const refundOrders = new Map();
-  state.refunds.forEach((r) => {
-    if (!refundOrders.has(r.order)) refundOrders.set(r.order, []);
-    refundOrders.get(r.order).push(r);
-  });
-
-  const textCells = state.textCells;
-  if (textCells.length) {
-    issues.push({
-      sev: "bad",
-      title: "Refund values stored as text",
-      count: textCells.length,
-      desc: "Google Sheets will not include a text cell in a SUM, so the sheet's own column total is short by this amount. " +
-            "Retype each cell as a plain number to fix. Total hidden: " + gbp(textCells.reduce((a, r) => a + r.value, 0)) + ".",
-      items: textCells.map((r) => `${r.order} (${r.valueRaw})`),
-    });
-  }
-
-  const badDates = state.refunds.filter((r) => r.dateRepaired);
-  if (badDates.length) {
-    issues.push({
-      sev: "warn",
-      title: "Mistyped year in Date Refunded",
-      count: badDates.length,
-      desc: "Dates such as 7/22/0206 were read as 2026. They are included in every figure here, but any filter or " +
-            "sort in the sheet itself will treat them as year 206 and place them out of range.",
-      items: [...new Set(badDates.map((r) => r.dateRaw))],
-    });
-  }
-
-  const undated = state.refunds.filter((r) => !r.dateOk);
-  if (undated.length) {
-    issues.push({
-      sev: "warn", title: "Refunds with no usable date", count: undated.length,
-      desc: "These cannot be placed in a month or week, so they are excluded from the rate and trend figures.",
-      items: undated.slice(0, 40).map((r) => r.order),
-    });
-  }
-
-  const badMoney = [...state.refunds, ...state.pending].filter((r) => r.valueTypo || (!r.valueOk && r.valueRaw));
-  if (badMoney.length) {
-    issues.push({
-      sev: "bad", title: "Amounts that are not clean numbers", count: badMoney.length,
-      desc: "Values such as 79/95 (a slash typed instead of a decimal point). Read literally these distort every total.",
-      items: badMoney.map((r) => `${r.order} (“${r.valueRaw}”)`),
-    });
-  }
-
-  const dupes = [...refundOrders.entries()].filter(([, rows]) => rows.length > 1);
-  if (dupes.length) {
-    issues.push({
-      sev: "warn", title: "Order refunded more than once", count: dupes.length,
-      desc: "Either a genuine second part-refund, or the same refund logged twice. Worth confirming — duplicates inflate every total.",
-      items: dupes.map(([o, rows]) => `${o} (${rows.length}× · ${rows.map((r) => r.dateRaw).join(", ")})`),
-    });
-  }
-
-  const paidButPending = state.pending.filter((p) => refundOrders.has(p.order));
-  if (paidButPending.length) {
-    issues.push({
-      sev: "bad", title: "Still marked pending, but already refunded", count: paidButPending.length,
-      desc: "These appear in the refund tracker yet remain open in the pending tracker, overstating what you owe by " +
-            gbp(paidButPending.reduce((a, r) => a + r.value, 0)) + ". Close them off.",
-      items: paidButPending.map((r) => r.order),
-    });
-  }
-
-  const noAmount = state.pending.filter((p) => !p.valueOk || p.value === 0);
-  if (noAmount.length) {
-    issues.push({
-      sev: "warn", title: "Pending refunds with no amount", count: noAmount.length,
-      desc: "The backlog total understates the true liability by however much these are worth.",
-      items: noAmount.slice(0, 40).map((r) => r.order),
-    });
-  }
-
-  // The agent column should hold a person. Anything that also appears as a
-  // reason code is a mis-keyed row, and it skews every per-agent figure.
-  const reasonWords = new Set(state.refunds.map((r) => r.reason.toLowerCase()));
-  const badVa = state.refunds.filter((r) => r.va && reasonWords.has(r.va.toLowerCase()));
-  if (badVa.length) {
-    issues.push({
-      sev: "warn",
-      title: "Reason code entered in the agent column",
-      count: badVa.length,
-      desc: "These rows name a status rather than a person, so they appear as a phantom agent in every " +
-            "per-agent breakdown and no real agent gets credit for the work. Value affected: " +
-            gbp(badVa.reduce((a, r) => a + r.value, 0)) + ".",
-      items: [...new Set(badVa.map((r) => `${r.order} (“${r.va}”)`))],
-    });
-  }
-
-  const mixed = state.refunds.filter((r) => r.store !== "Montanello UK");
-  if (mixed.length) {
-    issues.push({
-      sev: "warn", title: "Two stores in one tracker", count: mixed.length,
-      desc: "The refund tracker holds records from a second brand, separable only by order number. Adding a Store column " +
-            "would make every figure attributable instead of inferred.",
-      items: [],
-    });
-  }
-
-  return issues;
-}
-
-function renderRecon() {
-  const issues = detectIssues();
-  const total = state.refunds.length + state.pending.length;
-  const flagged = new Set();
-  issues.forEach((i) => i.items.forEach((s) => flagged.add(String(s).split(" ")[0])));
-
-  document.getElementById("reconCards").innerHTML = [
-    card(issues.length ? "bad" : "good", issues.length.toString(), "Issue types found", issues.length ? "see below" : "all clean"),
-    card("", total.toString(), "Records reconciled", "both trackers"),
-    card(flagged.size ? "warn" : "good", flagged.size.toString(), "Records flagged", flagged.size ? "need a human look" : "none"),
-    card("", total ? pct(1 - flagged.size / total) : "—", "Clean", "no flags raised"),
-  ].join("");
-
-  document.getElementById("issueList").innerHTML = issues.length
-    ? issues.map((i) => `
-        <div class="issue ${i.sev === "bad" ? "" : "warn"}">
-          <div class="h">${esc(i.title)} <span class="c">${i.count} record${i.count === 1 ? "" : "s"}</span></div>
-          <div class="d">${esc(i.desc)}</div>
-          ${i.items.length ? `<div class="list">${esc(i.items.slice(0, 25).join("  ·  "))}${i.items.length > 25 ? `  … +${i.items.length - 25} more` : ""}</div>` : ""}
-        </div>`).join("")
-    : `<div class="issue ok"><div class="h">No problems detected</div>
-         <div class="d">Both trackers reconcile cleanly against each other.</div></div>`;
-
-  renderLedger(flagged);
-}
-
-function renderLedger(flagged) {
-  const q = state.ledgerSearch.toLowerCase();
-  let rows = [...state.refunds, ...state.pending];
-
-  if (state.ledgerScope === "refunded") rows = rows.filter((r) => r.kind === "refund");
-  else if (state.ledgerScope === "pending") rows = rows.filter((r) => r.kind === "pending");
-  else if (state.ledgerScope === "issues") rows = rows.filter((r) => flagged.has(r.order));
-
-  if (q) {
-    rows = rows.filter((r) =>
-      r.order.toLowerCase().includes(q) ||
-      r.va.toLowerCase().includes(q) ||
-      r.reason.toLowerCase().includes(q));
-  }
-
-  rows.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
-  const shown = rows.slice(0, 400);
-
-  document.querySelector("#ledgerTable tbody").innerHTML = shown.length
-    ? shown.map((r) => {
-        const flags = [];
-        if (r.valueTypo) flags.push("amount typo");
-        if (r.dateRepaired) flags.push("year typo");
-        if (!r.valueOk && r.valueRaw) flags.push("bad amount");
-        if (!r.valueOk && !r.valueRaw) flags.push("no amount");
-        if (state.textCells.some((t) => t.order === r.order && r.kind === "refund")) flags.push("stored as text");
-        if (r.kind === "pending" && state.refunds.some((x) => x.order === r.order)) flags.push("already refunded");
-        return `<tr>
-          <td><span class="pill ${r.kind === "refund" ? "refunded" : "pending"}">${r.kind === "refund" ? "Refunded" : "Pending"}</span></td>
-          <td class="num">${esc(r.order)}</td>
-          <td>${esc(r.va)}</td>
-          <td>${r.date ? r.date.toLocaleDateString("en-GB") : esc(r.dateRaw || "—")}</td>
-          <td>${esc(r.reason)}</td>
-          <td class="num">${esc(r.tierLabel)}</td>
-          <td class="num">${r.valueOk ? gbp(r.value) : esc(r.valueRaw || "—")}</td>
-          <td>${esc(r.store)}</td>
-          <td>${flags.map((f) => `<span class="pill flag">${esc(f)}</span>`).join("")}</td>
-        </tr>`;
-      }).join("")
-    : `<tr><td colspan="9" class="hint">Nothing matches.</td></tr>`;
-
-  document.getElementById("ledgerCount").textContent =
-    `Showing ${shown.length} of ${rows.length} records` + (rows.length > 400 ? " (first 400)" : "");
-}
 
 function downloadCsv(head, body, name) {
   const csv = [head, ...body]
@@ -906,26 +601,6 @@ function exportRefunds() {
   );
 }
 
-function exportLedger() {
-  const rows = [...state.refunds, ...state.pending];
-  const head = ["State", "Order", "Agent", "Date", "Reason", "Tier", "Value", "Store"];
-  const body = rows.map((r) => [
-    r.kind === "refund" ? "Refunded" : "Pending",
-    r.order, r.va,
-    r.date ? r.date.toLocaleDateString("en-GB") : r.dateRaw,
-    r.reason, r.tierLabel,
-    r.valueOk ? r.value.toFixed(2) : r.valueRaw,
-    r.store,
-  ]);
-  const csv = [head, ...body]
-    .map((r) => r.map((c) => `"${String(c == null ? "" : c).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  a.download = `montanello-unified-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
 
 /* ---------------- shell ---------------- */
 
@@ -945,8 +620,33 @@ function renderAll() {
   renderRefunds();
   renderCancels();
   renderLadder();
-  renderRate();
-  renderRecon();
+}
+
+/** Set the cancellation range from a preset chip and re-render. */
+function applyPreset(kind) {
+  const today = new Date();
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  let from = null, to = null;
+
+  if (kind === "30" || kind === "90") {
+    const d = new Date(today);
+    d.setDate(d.getDate() - Number(kind));
+    from = iso(d); to = iso(today);
+  } else if (kind === "thismonth") {
+    from = iso(new Date(today.getFullYear(), today.getMonth(), 1));
+    to = iso(today);
+  } else if (kind === "lastmonth") {
+    from = iso(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+    to = iso(new Date(today.getFullYear(), today.getMonth(), 0));
+  }
+
+  state.cancelFrom = from || "";
+  state.cancelTo = to || "";
+  document.getElementById("cancelFrom").value = state.cancelFrom;
+  document.getElementById("cancelTo").value = state.cancelTo;
+  document.querySelectorAll("#cancelPresets .chip")
+    .forEach((c) => c.classList.toggle("active", c.dataset.range === kind));
+  renderCancels();
 }
 
 function init() {
@@ -970,21 +670,19 @@ function init() {
 
   document.getElementById("mxRefresh").addEventListener("click", load);
 
-  document.getElementById("ledgerSearch").addEventListener("input", (e) => {
-    state.ledgerSearch = e.target.value;
-    renderRecon();
+  // Cancellation date range
+  document.getElementById("cancelPresets").addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (chip) applyPreset(chip.dataset.range);
   });
-  document.getElementById("ledgerScope").addEventListener("change", (e) => {
-    state.ledgerScope = e.target.value;
-    renderRecon();
+  ["cancelFrom", "cancelTo"].forEach((id) => {
+    document.getElementById(id).addEventListener("change", (e) => {
+      state[id] = e.target.value;
+      document.querySelectorAll("#cancelPresets .chip").forEach((c) => c.classList.remove("active"));
+      renderCancels();
+    });
   });
-  document.getElementById("exportCsv").addEventListener("click", exportLedger);
-
-  document.getElementById("clearOrders").addEventListener("click", () => {
-    state.weeklyOrders = {};
-    saveOrders();
-    renderRate();
-  });
+  applyPreset("all");
 
   load();
   setInterval(load, REFRESH_MS);
