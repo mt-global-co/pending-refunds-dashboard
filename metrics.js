@@ -555,33 +555,12 @@ function renderCancels() {
     ? `${state.cancelTab.length} cancellation${state.cancelTab.length === 1 ? "" : "s"} logged on the Cancellation tab in total. Cancellations recorded before that tab existed sit in the Refunds tab and carry no reason.`
     : "Nothing logged on the Cancellation tab yet.";
 
-  // July reason snapshot, valued from whatever the sheet holds for those orders
-  const valueOf = {};
-  state.refunds.forEach((r) => { valueOf[r.order.replace(/[^0-9]/g, "")] = r.value; });
-  const byCat = {};
-  Object.entries(CANCEL_REASONS).forEach(([order, cat]) => {
-    (byCat[cat] = byCat[cat] || []).push({ order, v: valueOf[order] || 0 });
-  });
-  const catRows = Object.entries(byCat)
-    .map(([cat, rows]) => ({ cat, n: rows.length, v: rows.reduce((a, r) => a + r.v, 0) }))
-    .sort((a, b) => b.v - a.v);
-  const totalCat = catRows.reduce((a, r) => a + r.v, 0);
-  const maxCat = Math.max(...catRows.map((r) => r.v), 1);
-
-  document.querySelector("#cancelReasonTable tbody").innerHTML = catRows.map((r) => `
-    <tr>
-      <td>${esc(CANCEL_REASON_LABELS[r.cat] || r.cat)}</td>
-      <td class="num">${r.n}</td><td class="num">${gbp(r.v)}</td>
-      <td class="num">${gbp(r.v / r.n)}</td>
-      <td><div class="trk"><i class="${/delivery|origin|oos|ourfault/.test(r.cat) ? "bad" : /error|trust/.test(r.cat) ? "warn" : ""}" style="width:${(r.v / maxCat) * 100}%"></i></div></td>
-    </tr>`).join("") +
-    `<tr class="tot"><td>Total</td><td class="num">${Object.keys(CANCEL_REASONS).length}</td>
-     <td class="num">${gbp(totalCat)}</td><td class="num"></td><td></td></tr>`;
-
+  // Quote filter options come straight from the categories that have quotes.
   const sel = document.getElementById("quoteFilter");
   if (sel.options.length <= 1) {
+    const cats = [...new Set(Object.keys(CANCEL_QUOTES).map((o) => CANCEL_REASONS[o]).filter(Boolean))];
     sel.innerHTML = `<option value="">All reasons</option>` +
-      catRows.map((r) => `<option value="${r.cat}">${esc(CANCEL_REASON_LABELS[r.cat] || r.cat)}</option>`).join("");
+      cats.map((c) => `<option value="${c}">${esc(CANCEL_REASON_LABELS[c] || c)}</option>`).join("");
   }
   renderQuotes();
 }
