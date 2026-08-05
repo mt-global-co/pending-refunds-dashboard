@@ -6,8 +6,8 @@
 <title>Pending Refunds Dashboard</title>
 <!-- ?v= must be bumped on every deploy. Without it a browser can pair new
      HTML with a cached older script and the page breaks silently. -->
-<link rel="stylesheet" href="style.css?v=20260803c" />
-<link rel="stylesheet" href="metrics.css?v=20260803c" />
+<link rel="stylesheet" href="style.css?v=20260803d" />
+<link rel="stylesheet" href="metrics.css?v=20260803d" />
 </head>
 <body>
 
@@ -39,10 +39,6 @@
             <span class="summary-count" id="countTotal">0</span>
             <span class="summary-label">Total Pending</span>
           </div>
-          <div class="summary-card ok">
-            <span class="summary-count" id="countOk">0</span>
-            <span class="summary-label">On Time</span>
-          </div>
           <div class="summary-card yellow">
             <span class="summary-count" id="countYellow">0</span>
             <span class="summary-label">5+ Days Overdue</span>
@@ -51,21 +47,10 @@
             <span class="summary-count" id="countOrange">0</span>
             <span class="summary-label">7+ Days Overdue</span>
           </div>
-          <div class="summary-card red">
+          <!-- full width: the most urgent bucket, and it avoids an orphan row -->
+          <div class="summary-card red total">
             <span class="summary-count" id="countRed">0</span>
             <span class="summary-label">10+ Days Overdue</span>
-          </div>
-          <div class="summary-card refunded">
-            <span class="summary-count" id="countRefunded">0</span>
-            <span class="summary-label">Refunded</span>
-          </div>
-          <div class="summary-card chargeback">
-            <span class="summary-count" id="countChargeback">0</span>
-            <span class="summary-label">Chargeback</span>
-          </div>
-          <div class="summary-card ethoca total">
-            <span class="summary-count" id="countEthoca">0</span>
-            <span class="summary-label">Ethoca Alert</span>
           </div>
         </div>
 
@@ -161,7 +146,8 @@
     <div class="panel-intro">
       <h2>Cancellations</h2>
       <p>Orders refunded without ever shipping — cancelled before dispatch, or sold when the stock was not there.
-         Counts and values are live; the reasons underneath come from reading the support tickets and cover July 2026.</p>
+         All figures are live. Reasons come from the Cancellation tab, so they cover orders logged there;
+         cancellations recorded before that tab existed sit in the Refunds tab and carry no reason.</p>
     </div>
 
     <div class="daterange">
@@ -272,11 +258,11 @@
     </div>
   </div>
 
-  <script src="shell.js?v=20260803c"></script>
-  <script src="app.js?v=20260803c"></script>
+  <script src="shell.js?v=20260803d"></script>
+  <script src="app.js?v=20260803d"></script>
   <!-- Customer quotes, kept out of the public repo. A 404 here is expected and
        harmless: the Cancellations tab hides its quotes section without it. -->
-  <script src="cancel-quotes.js?v=20260803c" onerror="void 0"></script>
-  <script src="metrics.js?v=20260803c"></script>
+  <script src="cancel-quotes.js?v=20260803d" onerror="void 0"></script>
+  <script src="metrics.js?v=20260803d"></script>
 </body>
 </html>

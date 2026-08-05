@@ -272,33 +272,19 @@ function render() {
       .join("");
   }
 
-  const counts = {
-    pending: 0, refunded: 0, chargeback: 0, ethoca: 0,
-    ok: 0, yellow: 0, orange: 0, red: 0,
-  };
-  state.rows.forEach((r) => {
-    counts[r.progress]++;
-    if (r.progress === "pending") counts[r.urgency]++;
-  });
-  // Show counts only for pending when closed orders are hidden
+  // Only pending rows are counted; closed statuses now live in the Refunds
+  // and Cancellation tabs rather than on this queue.
   const displayedRows = state.showClosed ? state.rows : state.rows.filter((r) => !r.closed);
-  const displayedCounts = {
-    pending: 0, ok: 0, yellow: 0, orange: 0, red: 0,
-  };
+  const counts = { pending: 0, yellow: 0, orange: 0, red: 0 };
   displayedRows.forEach((r) => {
-    if (r.progress === "pending") {
-      displayedCounts.pending++;
-      displayedCounts[r.urgency]++;
-    }
+    if (r.progress !== "pending") return;
+    counts.pending++;
+    if (r.urgency in counts) counts[r.urgency]++;   // "ok" is not shown
   });
-  document.getElementById("countTotal").textContent = displayedCounts.pending;
-  document.getElementById("countOk").textContent = displayedCounts.ok;
-  document.getElementById("countYellow").textContent = displayedCounts.yellow;
-  document.getElementById("countOrange").textContent = displayedCounts.orange;
-  document.getElementById("countRed").textContent = displayedCounts.red;
-  document.getElementById("countRefunded").textContent = counts.refunded;
-  document.getElementById("countChargeback").textContent = counts.chargeback;
-  document.getElementById("countEthoca").textContent = counts.ethoca;
+  document.getElementById("countTotal").textContent = counts.pending;
+  document.getElementById("countYellow").textContent = counts.yellow;
+  document.getElementById("countOrange").textContent = counts.orange;
+  document.getElementById("countRed").textContent = counts.red;
 }
 
 function escapeHTML(str) {
