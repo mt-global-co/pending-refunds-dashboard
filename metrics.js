@@ -191,6 +191,16 @@ async function fetchCsv(url) {
   return toObjects(parseCSV(await res.text()));
 }
 
+/** Ethoca alerts are dispute warnings, not refunds the team negotiated, and
+ *  they carry "Ethoca Alert" in the agent column instead of a name — which put
+ *  a phantom agent in every per-agent table and dragged the acceptance rate
+ *  down. Excluded from all metrics; the status line reports how many. */
+const isEthoca = (r) =>
+  /ethoca/i.test(r["va"] || "") ||
+  /ethoca/i.test(r["reason"] || r["reason "] || r["reason for cancellation"] || "");
+
+let ethocaSkipped = 0;
+
 /** Shared by the Refunds and Cancellation tabs — same shape, different
  *  reason header. `source` records which tab a row came from. */
 function normaliseRefunds(rows, source) {
@@ -198,6 +208,7 @@ function normaliseRefunds(rows, source) {
     .map((r) => {
       const order = (r["order"] || r["order "] || "").trim();
       if (!order) return null;
+      if (isEthoca(r)) { ethocaSkipped++; return null; }
       const d = parseDate(r["date refunded"]);
       const v = money(r["refund value"]);
       const t = tier(r["refund %"]);
@@ -283,6 +294,7 @@ async function load() {
     ]);
     // Kept strictly apart so each dashboard tab mirrors its sheet tab.
     // Only the Cancellations view combines them, via allRefunds().
+    ethocaSkipped = 0;
     state.refunds = normaliseRefunds(rRows, "refunds");        // Refunds tab only
     state.cancelTab = normaliseRefunds(cRows, "cancellation"); // Cancellation tab only
     state.pending = normalisePending(pRows);
@@ -291,7 +303,9 @@ async function load() {
     renderAll();
     status.textContent =
       `${state.refunds.length} refunds · ${state.cancelTab.length} cancellations · ` +
-      `${state.pending.length} awaiting payment · updated ${new Date().toLocaleTimeString("en-GB")}`;
+      `${state.pending.length} awaiting payment` +
+      (ethocaSkipped ? ` · ${ethocaSkipped} Ethoca alerts excluded` : "") +
+      ` · updated ${new Date().toLocaleTimeString("en-GB")}`;
   } catch (e) {
     showError("Could not load the Refunds workbook: " + e.message +
       ". It must stay shared as “Anyone with the link can view”.");
