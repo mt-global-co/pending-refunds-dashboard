@@ -281,17 +281,16 @@ async function load() {
       fetchCsv(csvUrl(SOURCES.cancellations)),
       fetchCsv(csvUrl(SOURCES.pending)),
     ]);
-    const refundTab = normaliseRefunds(rRows, "refunds");
-    state.cancelTab = normaliseRefunds(cRows, "cancellation");
-    // One combined ledger: a cancellation is logged in one tab or the other,
-    // never both, so this cannot double-count.
-    state.refunds = refundTab.concat(state.cancelTab);
+    // Kept strictly apart so each dashboard tab mirrors its sheet tab.
+    // Only the Cancellations view combines them, via allRefunds().
+    state.refunds = normaliseRefunds(rRows, "refunds");        // Refunds tab only
+    state.cancelTab = normaliseRefunds(cRows, "cancellation"); // Cancellation tab only
     state.pending = normalisePending(pRows);
     showError(null);
     buildMonthOptions();
     renderAll();
     status.textContent =
-      `${refundTab.length} refunds · ${state.cancelTab.length} cancellations · ` +
+      `${state.refunds.length} refunds · ${state.cancelTab.length} cancellations · ` +
       `${state.pending.length} awaiting payment · updated ${new Date().toLocaleTimeString("en-GB")}`;
   } catch (e) {
     showError("Could not load the Refunds workbook: " + e.message +
@@ -304,7 +303,12 @@ async function load() {
 /* ---------------- selectors ---------------- */
 
 const inMonth = (r) => !state.month || (r.date && monthKey(r.date) === state.month);
+/** Refunds tab only — what the Refunds view and the Save-Rate Ladder report on. */
 const scopedRefunds = () => state.refunds.filter(inMonth);
+
+/** Both tabs. Only the Cancellations view needs this, to express cancellations
+ *  as a share of everything refunded. There is no overlap between the two. */
+const allRefunds = () => state.refunds.concat(state.cancelTab);
 
 /** Per-case saving implied by the tier: a 40% refund of £19.98 retained £29.97. */
 function savings(list) {
@@ -479,16 +483,16 @@ function renderRefunds() {
 /* ---------------- render: cancellations ---------------- */
 
 function renderCancels() {
-  const allRefunds = state.refunds.filter(inCancelRange);
-  const cancels = allRefunds.filter(isCancelType);
+  const everything = allRefunds().filter(inCancelRange);
+  const cancels = everything.filter(isCancelType);
   const totalV = cancels.reduce((a, r) => a + r.value, 0);
-  const allV = allRefunds.reduce((a, r) => a + r.value, 0);
+  const allV = everything.reduce((a, r) => a + r.value, 0);
 
   const fmt = (s) => s ? new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : null;
   const rangeLabel = (!state.cancelFrom && !state.cancelTo) ? "all time"
     : `${fmt(state.cancelFrom) || "start"} – ${fmt(state.cancelTo) || "today"}`;
   document.getElementById("cancelRangeNote").textContent =
-    `Showing ${cancels.length} of ${state.refunds.filter(isCancelType).length} cancellations · ${rangeLabel}`;
+    `Showing ${cancels.length} of ${allRefunds().filter(isCancelType).length} cancellations · ${rangeLabel}`;
 
   document.getElementById("cancelCards").innerHTML = [
     card("bad", cancels.length.toString(), "Orders never shipped", "cancelled or out of stock"),
@@ -500,7 +504,7 @@ function renderCancels() {
   // by month, with share of that month's refunds
   const m = {}, mAll = {};
   cancels.forEach((r) => { if (r.date) { const k = monthKey(r.date); (m[k] = m[k] || []).push(r); } });
-  allRefunds.forEach((r) => { if (r.date) { const k = monthKey(r.date); (mAll[k] = mAll[k] || []).push(r); } });
+  everything.forEach((r) => { if (r.date) { const k = monthKey(r.date); (mAll[k] = mAll[k] || []).push(r); } });
   const months = Object.keys(m).sort();
   const maxShare = Math.max(...months.map((k) => {
     const cv = m[k].reduce((a, r) => a + r.value, 0);
@@ -579,7 +583,7 @@ function renderQuotes() {
   const cat = document.getElementById("quoteFilter").value;
   const q = (state.quoteSearch || "").toLowerCase();
   const valueOf = {};
-  state.refunds.forEach((r) => { valueOf[r.order.replace(/[^0-9]/g, "")] = r.value; });
+  allRefunds().forEach((r) => { valueOf[r.order.replace(/[^0-9]/g, "")] = r.value; });
 
   let rows = Object.entries(CANCEL_QUOTES)
     .filter(([order]) => !cat || CANCEL_REASONS[order] === cat)

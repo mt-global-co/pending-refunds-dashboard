@@ -6,8 +6,8 @@
 <title>Pending Refunds Dashboard</title>
 <!-- ?v= must be bumped on every deploy. Without it a browser can pair new
      HTML with a cached older script and the page breaks silently. -->
-<link rel="stylesheet" href="style.css?v=20260803d" />
-<link rel="stylesheet" href="metrics.css?v=20260803d" />
+<link rel="stylesheet" href="style.css?v=20260803e" />
+<link rel="stylesheet" href="metrics.css?v=20260803e" />
 </head>
 <body>
 
@@ -104,8 +104,8 @@
   <div class="view mx" id="view-refunds">
     <div class="panel-intro">
       <h2>Refunds</h2>
-      <p>Every refund paid, live from the refund tracker. Use the month selector above to narrow the period —
-         leave it on “All months” to see the whole history.</p>
+      <p>The <strong>Refunds</strong> tab of the sheet, and nothing else — cancellations are excluded and live on
+         their own tab. Use the month selector above to narrow the period, or leave it on “All months”.</p>
     </div>
 
     <div class="cards" id="refundCards"></div>
@@ -146,8 +146,9 @@
     <div class="panel-intro">
       <h2>Cancellations</h2>
       <p>Orders refunded without ever shipping — cancelled before dispatch, or sold when the stock was not there.
-         All figures are live. Reasons come from the Cancellation tab, so they cover orders logged there;
-         cancellations recorded before that tab existed sit in the Refunds tab and carry no reason.</p>
+         This is the one view that spans both sheet tabs: everything on the <strong>Cancellation</strong> tab, plus
+         older cancellations still sitting in <strong>Refunds</strong>. Reasons come from the Cancellation tab, so
+         the older ones carry none.</p>
     </div>
 
     <div class="daterange">
@@ -258,11 +259,11 @@
     </div>
   </div>
 
-  <script src="shell.js?v=20260803d"></script>
-  <script src="app.js?v=20260803d"></script>
+  <script src="shell.js?v=20260803e"></script>
+  <script src="app.js?v=20260803e"></script>
   <!-- Customer quotes, kept out of the public repo. A 404 here is expected and
        harmless: the Cancellations tab hides its quotes section without it. -->
-  <script src="cancel-quotes.js?v=20260803d" onerror="void 0"></script>
-  <script src="metrics.js?v=20260803d"></script>
+  <script src="cancel-quotes.js?v=20260803e" onerror="void 0"></script>
+  <script src="metrics.js?v=20260803e"></script>
 </body>
 </html>
