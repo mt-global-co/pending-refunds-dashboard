@@ -317,6 +317,17 @@ async function load() {
 /* ---------------- selectors ---------------- */
 
 const inMonth = (r) => !state.month || (r.date && monthKey(r.date) === state.month);
+/** Settled below full value. */
+const isPartial = (r) => r.tierPct != null && r.tierPct < 1;
+
+/** Could a partial even have been offered? Only when the customer ended up
+ *  holding the goods. Cancelled, out of stock, lost, stuck in customs or
+ *  returned means there is nothing for them to keep, so a full refund is the
+ *  only outcome and it is not a negotiating failure. */
+const NON_NEGOTIABLE =
+  /cancel|out of stock|lost package|in customs|returned to sender|duplicate|returned by customer|escalation|uk\/law/i;
+const isNegotiable = (r) => !NON_NEGOTIABLE.test(r.reason);
+
 /** Refunds tab only — what the Refunds view and the Save-Rate Ladder report on. */
 const scopedRefunds = () => state.refunds.filter(inMonth);
 
@@ -344,16 +355,25 @@ function savings(list) {
 function renderLadder() {
   const list = scopedRefunds();
   const s = savings(list);
-  const partials = list.filter((r) => r.tierPct != null && r.tierPct < 1);
+  const partials = list.filter(isPartial);
   const fulls = list.filter((r) => r.isFull);
   const totalValue = list.reduce((a, r) => a + r.value, 0);
 
+  // Judging agents on all refunds is unfair: you cannot offer someone 40% to
+  // keep goods that were cancelled, went out of stock or never cleared customs.
+  // The honest measure is how often a partial was secured when one was possible.
+  const negotiable = list.filter(isNegotiable);
+  const nonNegotiable = list.filter((r) => !isNegotiable(r));
+  const negPartials = negotiable.filter(isPartial);
+
   document.getElementById("ladderCards").innerHTML = [
-    card("good", gbp0(s.saved), "Retained by partial settlements", `${s.n} cases`),
-    card("accent", list.length ? pct(partials.length / list.length) : "—", "Acceptance rate", "settled below full"),
-    card("", s.exposure ? pct(s.saved / s.exposure) : "—", "Save rate", "of implied full value"),
+    card("good", gbp0(s.saved), "Kept in the business", `across ${s.n} settlements`),
+    card("good", negotiable.length ? pct(negPartials.length / negotiable.length) : "—",
+         "Partial secured", "where one was possible"),
+    card("accent", s.exposure ? pct(s.saved / s.exposure) : "—", "Save rate", "of what those cases would have cost"),
     card("warn", gbp0(totalValue), "Paid out", `${list.length} refunds`),
-    card("", fulls.length.toString(), "Full refunds", "no saving possible"),
+    card("", nonNegotiable.length.toString(), "Full refund unavoidable",
+         "never received or cancelled"),
   ].join("");
 
   // by agent
@@ -365,20 +385,26 @@ function renderLadder() {
   const agentRows = Object.entries(byVa)
     .map(([va, rows]) => {
       const sv = savings(rows);
-      const p = rows.filter((r) => r.tierPct != null && r.tierPct < 1).length;
-      return { va, n: rows.length, p, acc: rows.length ? p / rows.length : 0, saved: sv.saved, rate: sv.exposure ? sv.saved / sv.exposure : 0 };
+      const neg = rows.filter(isNegotiable);
+      const negP = neg.filter(isPartial);
+      return {
+        va, n: rows.length,
+        neg: neg.length,
+        secured: neg.length ? negP.length / neg.length : 0,
+        saved: sv.saved,
+        rate: sv.exposure ? sv.saved / sv.exposure : 0,
+      };
     })
     .sort((a, b) => b.saved - a.saved);
 
-  const bestAcc = Math.max(...agentRows.map((a) => a.acc), 0.0001);
   document.querySelector("#agentTable tbody").innerHTML = agentRows.length
     ? agentRows.map((a) => `
         <tr>
           <td>${esc(a.va)}</td>
           <td class="num">${a.n}</td>
-          <td class="num">${a.p}</td>
-          <td class="num">${pct(a.acc)}
-            <div class="trk" style="margin-top:4px"><i class="${a.acc >= bestAcc * 0.8 ? "good" : a.acc >= bestAcc * 0.55 ? "warn" : "bad"}" style="width:${(a.acc / bestAcc) * 100}%"></i></div>
+          <td class="num">${a.neg}</td>
+          <td class="num">${pct(a.secured)}
+            <div class="trk" style="margin-top:4px"><i class="${a.secured >= 0.9 ? "good" : a.secured >= 0.8 ? "warn" : "bad"}" style="width:${a.secured * 100}%"></i></div>
           </td>
           <td class="num">${gbp(a.saved)}</td>
           <td class="num">${a.rate ? pct(a.rate) : "—"}</td>

@@ -6,8 +6,8 @@
 <title>Pending Refunds Dashboard</title>
 <!-- ?v= must be bumped on every deploy. Without it a browser can pair new
      HTML with a cached older script and the page breaks silently. -->
-<link rel="stylesheet" href="style.css?v=20260806a" />
-<link rel="stylesheet" href="metrics.css?v=20260806a" />
+<link rel="stylesheet" href="style.css?v=20260806b" />
+<link rel="stylesheet" href="metrics.css?v=20260806b" />
 </head>
 <body>
 
@@ -214,17 +214,20 @@
       <h2>Save-Rate Ladder</h2>
       <p>Every refund settled below 100% keeps money in the business. Saving is calculated per case from the
          recorded refund percentage: a £19.98 refund logged at 40% implies a £49.95 order, so £29.97 was retained.</p>
+      <p>A partial can only be offered when the customer ends up holding the goods. Orders that were cancelled,
+         went out of stock, or never cleared customs have to be refunded in full — so those are set aside, and
+         the team is measured on the cases where a saving was genuinely available.</p>
     </div>
 
     <div class="cards" id="ladderCards"></div>
 
     <div class="grid-2">
       <div class="block">
-        <h3>By agent <span class="hint">acceptance is the share of that agent's refunds settled below full</span></h3>
+        <h3>By agent <span class="hint">judged only on cases where a partial was actually possible</span></h3>
         <div class="tw"><table id="agentTable">
           <thead><tr>
-            <th>Agent</th><th class="num">Refunds</th><th class="num">Partial</th>
-            <th class="num">Acceptance</th><th class="num">Saved</th><th class="num">Save rate</th>
+            <th>Agent</th><th class="num">Refunds</th><th class="num">Negotiable</th>
+            <th class="num">Partial secured</th><th class="num">Saved</th><th class="num">Save rate</th>
           </tr></thead>
           <tbody></tbody>
         </table></div>
@@ -259,11 +262,11 @@
     </div>
   </div>
 
-  <script src="shell.js?v=20260806a"></script>
-  <script src="app.js?v=20260806a"></script>
+  <script src="shell.js?v=20260806b"></script>
+  <script src="app.js?v=20260806b"></script>
   <!-- Customer quotes, kept out of the public repo. A 404 here is expected and
        harmless: the Cancellations tab hides its quotes section without it. -->
-  <script src="cancel-quotes.js?v=20260806a" onerror="void 0"></script>
-  <script src="metrics.js?v=20260806a"></script>
+  <script src="cancel-quotes.js?v=20260806b" onerror="void 0"></script>
+  <script src="metrics.js?v=20260806b"></script>
 </body>
 </html>
