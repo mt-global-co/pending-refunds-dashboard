@@ -115,12 +115,35 @@ function parseCSV(text) {
   return rows.filter((r) => r.some((c) => c.trim() !== ""));
 }
 
+// Column names we expect to see. Used to locate the header row rather than
+// assuming it is the first one — a note pinned above the table ("No Refunds
+// over the Weekends!") once shifted every tab down by a row and silently
+// emptied the whole dashboard.
+const KNOWN_HEADERS = [
+  "va", "order", "order number", "date refunded", "reason",
+  "reason for cancellation", "refund %", "refund value",
+  "promised date", "status", "amount to refund",
+];
+
+/** Index of the first row that looks like a header, or 0 if none does. */
+function findHeaderRow(rows) {
+  const limit = Math.min(rows.length, 10);
+  for (let i = 0; i < limit; i++) {
+    const hits = rows[i]
+      .map((c) => c.trim().toLowerCase())
+      .filter((c) => c && KNOWN_HEADERS.includes(c)).length;
+    if (hits >= 2) return i;
+  }
+  return 0;
+}
+
 function toObjects(rows) {
   if (!rows.length) return [];
-  const head = rows[0].map((h) => h.trim().toLowerCase());
-  return rows.slice(1).map((r) => {
+  const h = findHeaderRow(rows);
+  const head = rows[h].map((c) => c.trim().toLowerCase());
+  return rows.slice(h + 1).map((r) => {
     const o = {};
-    head.forEach((h, i) => { o[h] = (r[i] || "").trim(); });
+    head.forEach((k, i) => { o[k] = (r[i] || "").trim(); });
     return o;
   });
 }

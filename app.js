@@ -109,8 +109,26 @@ function progressFromRaw(raw) {
   return "pending";
 }
 
+// Don't assume the header is the first row. A note pinned above the table
+// ("No Refunds over the Weekends!") once pushed every tab down by one and
+// silently emptied the dashboard, so find the header instead.
+const KNOWN_HEADERS = ["va", "order number", "promised date", "status", "amount to refund"];
+
+function findHeaderRow(rows) {
+  const limit = Math.min(rows.length, 10);
+  for (let i = 0; i < limit; i++) {
+    const hits = rows[i]
+      .map((c) => c.trim().toLowerCase())
+      .filter((c) => c && KNOWN_HEADERS.includes(c)).length;
+    if (hits >= 2) return i;
+  }
+  return 0;
+}
+
 function rowsFromCSV(csvRows) {
-  const [header, ...body] = csvRows;
+  const h = findHeaderRow(csvRows);
+  const header = csvRows[h] || [];
+  const body = csvRows.slice(h + 1);
   const headerKey = (h) => h.trim().toLowerCase();
   const idx = {
     va: header.findIndex((h) => headerKey(h) === "va"),
